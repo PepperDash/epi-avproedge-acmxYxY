@@ -1,0 +1,439 @@
+﻿// For Basic SIMPL# Classes
+// For Basic SIMPL#Pro classes
+
+using Crestron.SimplSharpPro.DeviceSupport;
+using PepperDash.Core;
+using PepperDash.Core.Logging;
+using PepperDash.Essentials.Core;
+using PepperDash.Essentials.Core.Bridges;
+using PepperDash.Essentials.Core.Queues;
+using PepperDash.Essentials.Core.Routing;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace PepperDash.Essentials.Plugin.AvProEdge
+{
+  /// <summary>
+  /// Plugin device template for third party devices that use IBasicCommunication
+  /// </summary>
+  /// <remarks>
+  /// Rename the class to match the device plugin being developed.
+  /// </remarks>
+  /// <example>
+  /// "EssentialsPluginDeviceTemplate" renamed to "SamsungMdcDevice"
+  /// </example>
+  public class ACMXYxYDevice : EssentialsBridgeableDevice, IMatrixRouting, IRouting
+  {
+    /// <summary>
+    /// It is often desirable to store the config
+    /// </summary>
+    private readonly DeviceConfig config;
+
+    /// <summary>
+    /// Provides a queue and dedicated worker thread for processing feedback messages from a device.
+    /// </summary>
+    private readonly GenericQueue receiveQueue;
+
+    #region IBasicCommunication Properties and Constructor.  Remove if not needed.
+
+    private readonly IBasicCommunication comms;
+    private readonly GenericCommunicationMonitor commsMonitor;
+
+    private readonly CommunicationGather commsGather;
+
+    /// <summary>
+    /// Set this value to that of the delimiter used by the API (if applicable)
+    /// </summary>
+    private const string commsDelimiter = "\r";
+
+
+    /// <summary>
+    /// Connects/disconnects the comms of the plugin device
+    /// </summary>
+    /// <remarks>
+    /// triggers the comms.Connect/Disconnect as well as thee comms monitor start/stop
+    /// </remarks>
+    public bool Connect
+    {
+      get { return comms.IsConnected; }
+      set
+      {
+        if (value)
+        {
+          comms.Connect();
+          commsMonitor.Start();
+        }
+        else
+        {
+          comms.Disconnect();
+          commsMonitor.Stop();
+        }
+      }
+    }
+
+    /// <summary>
+    /// Reports connect feedback through the bridge
+    /// </summary>
+    public BoolFeedback ConnectFeedback { get; private set; }
+
+    /// <summary>
+    /// Reports online feedback through the bridge
+    /// </summary>
+    public BoolFeedback OnlineFeedback { get; private set; }
+
+    /// <summary>
+    /// Reports socket status feedback through the bridge
+    /// </summary>
+    public IntFeedback StatusFeedback { get; private set; }
+
+    public Dictionary<string, IRoutingInputSlot> InputSlots { get; private set; }
+
+    public Dictionary<string, IRoutingOutputSlot> OutputSlots { get; private set; }
+
+    public RoutingPortCollection<RoutingInputPort> InputPorts { get; private set; }
+
+    public RoutingPortCollection<RoutingOutputPort> OutputPorts { get; private set; }
+
+    /// <summary>
+    /// Plugin device constructor for devices that need IBasicCommunication
+    /// </summary>
+    /// <param name="key"></param>
+    /// <param name="name"></param>
+    /// <param name="config"></param>
+    /// <param name="comms"></param>
+    public ACMXYxYDevice(string key, string name, DeviceConfig config, IBasicCommunication comms, string typeName)
+  : base(key, name)
+    {
+      this.LogInformation("Constructing new {0} instance", name);
+
+      this.config = config;
+
+      receiveQueue = new GenericQueue(key + "-rxqueue");  // If you need to set the thread priority, use one of the available overloaded constructors.
+
+      ConnectFeedback = new BoolFeedback("connect", () => Connect);
+      OnlineFeedback = new BoolFeedback("online", () => commsMonitor.IsOnline);
+      StatusFeedback = new IntFeedback("status", () => (int)commsMonitor.Status);
+
+      this.comms = comms;
+      commsMonitor = new GenericCommunicationMonitor(
+        this,
+        this.comms,
+        this.config.PollTimeMs == 0 ? 30000 : this.config.PollTimeMs,
+        this.config.WarningTimeoutMs == 0 ? 30000 : this.config.WarningTimeoutMs,
+        this.config.ErrorTimeoutMs == 0 ? 60000 : this.config.ErrorTimeoutMs,
+        Poll);
+
+      var socket = this.comms as ISocketStatus;
+      if (socket != null)
+      {
+        // device comms is IP **ELSE** device comms is RS232
+        socket.ConnectionChange += socket_ConnectionChange;
+        Connect = true;
+      }
+
+      #region Communication data event handlers.  Comment out any that don't apply to the API type
+
+      // Only one of the below handlers should be necessary.  
+
+      commsGather = new CommunicationGather(this.comms, commsDelimiter);
+      commsGather.LineReceived += Handle_LineRecieved;
+
+      #endregion
+
+      InputSlots = new Dictionary<string, IRoutingInputSlot>();
+      OutputSlots = new Dictionary<string, IRoutingOutputSlot>();
+
+      InputPorts = new RoutingPortCollection<RoutingInputPort>();
+      OutputPorts = new RoutingPortCollection<RoutingOutputPort>();
+
+      if (typeName == DeviceFactory.ACMX8x8)
+      {
+        for (var i = 1; i <= 8; i++)
+        {
+          SetupSlots(i);
+        }
+      }
+      else if (typeName == DeviceFactory.ACMX16x16)
+      {
+        for (var i = 1; i <= 16; i++)
+        {
+          SetupSlots(i);
+        }
+      }
+      else
+      {
+        throw new ArgumentOutOfRangeException($"Unsupported type name: {typeName}");
+      }
+    }
+
+    private void SetupSlots(int slotNum)
+    {
+      var inputSlot = new InputSlot($"input{slotNum}", $"Input {slotNum}", slotNum);
+      InputSlots.Add(inputSlot.Key, inputSlot);
+      var inputKey = $"hdmi-in{slotNum}";
+      InputPorts.Add(
+        new RoutingInputPort(
+          inputKey,
+          eRoutingSignalType.AudioVideo,
+          eRoutingPortConnectionType.Hdmi,
+          slotNum,
+          this));
+
+      var outputSlot = new OutputSlot($"output{slotNum}", $"Output {slotNum}", slotNum);
+      OutputSlots.Add(outputSlot.Key, outputSlot);
+
+      var hdmiOutputKey = $"hdmi-out{slotNum}";
+      OutputPorts.Add(
+        new RoutingOutputPort(
+          hdmiOutputKey,
+          eRoutingSignalType.AudioVideo,
+          eRoutingPortConnectionType.Hdmi,
+          slotNum,
+          this));
+      var balAudOutputKey = $"audio-out{slotNum}";
+
+      OutputPorts.Add(
+        new RoutingOutputPort(
+          balAudOutputKey,
+          eRoutingSignalType.Audio,
+          eRoutingPortConnectionType.LineAudio,
+          slotNum,
+          this));
+    }
+
+
+    private void socket_ConnectionChange(object sender, GenericSocketStatusChageEventArgs args)
+    {
+      ConnectFeedback?.FireUpdate();
+
+      StatusFeedback?.FireUpdate();
+    }
+
+    private void Handle_LineRecieved(object sender, GenericCommMethodReceiveTextArgs args)
+    {
+      // Enqueues the message to be processed in a dedicated thread, but the specified method
+      receiveQueue.Enqueue(new ProcessStringMessage(args.Text, ProcessFeedbackMessage));
+    }
+
+
+    /// <summary>
+    /// This method should perform any necessary parsing of feedback messages from the device
+    /// </summary>
+    /// <param name="message"></param>
+        void ProcessFeedbackMessage(string message)
+        {
+            if (message.Contains("VS"))
+            {
+                var regex = new System.Text.RegularExpressions.Regex(@"OUT(\d+)\s+VS\s+IN(\d+)");
+                var match = regex.Match(message);
+
+                if (match.Success)
+                {
+                    var outputNumber = int.Parse(match.Groups[1].Value);
+                    var inputNumber = int.Parse(match.Groups[2].Value);
+
+                    // Use outputNumber and inputNumber as needed
+                    this.LogDebug("Route detected: Input {0} to Output {1}", inputNumber, outputNumber);
+
+                    var outputSlot = OutputSlots.FirstOrDefault(x => x.Value.SlotNumber == outputNumber).Value;
+                    var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value;
+
+                    outputSlot.CurrentRoutes[eRoutingSignalType.Video] = inputSlot;
+                }
+
+              return;
+            }
+
+            if (message.Contains("AS"))
+            {
+              var regex = new System.Text.RegularExpressions.Regex(@"OUT(\d+)\s+AS\s+IN(\d+)");
+              var match = regex.Match(message);
+              if (match.Success)
+              {
+                var outputNumber = int.Parse(match.Groups[1].Value);
+                var inputNumber = int.Parse(match.Groups[2].Value);
+                // Use outputNumber and inputNumber as needed
+                this.LogDebug("Audio Route detected: Input {0} to Output {1}", inputNumber, outputNumber);
+                var outputSlot = OutputSlots.FirstOrDefault(x => x.Value.SlotNumber == outputNumber).Value;
+                var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value;
+                outputSlot.CurrentRoutes[eRoutingSignalType.Audio] = inputSlot;
+              }
+              return;
+            }
+
+            if (message.Contains("SIG STA"))
+      {
+        var regex = new System.Text.RegularExpressions.Regex(@"IN(\d+)\s+SIG\s+STA\s+(\d+)");
+        var match = regex.Match(message);
+        if (match.Success)
+        {
+          var inputNumber = int.Parse(match.Groups[1].Value);
+          var status = int.Parse(match.Groups[2].Value);
+          // Use inputNumber and status as needed
+          this.LogDebug("Input {0} status: {1}", inputNumber, status);
+          var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value as InputSlot;
+          if (inputSlot != null)
+          {
+            inputSlot.VideoSyncDetected = status == 1;
+          }
+        }
+      }
+    }
+
+
+    // TODO [ ] If not using an ACII based API, delete the properties below
+    /// <summary>
+    /// Sends text to the device plugin comms
+    /// </summary>
+    /// <remarks>
+    /// Can be used to test commands with the device plugin using the DEVPROPS and DEVJSON console commands
+    /// </remarks>
+    /// <param name="text">Command to be sent</param>		
+    public void SendText(string text)
+    {
+      if (string.IsNullOrEmpty(text)) return;
+
+      comms.SendText(string.Format("{0}{1}", text, commsDelimiter));
+    }
+
+    /// <summary>
+    /// Polls the device
+    /// </summary>
+    /// <remarks>
+    /// Poll method is used by the communication monitor.  Update the poll method as needed for the plugin being developed
+    /// </remarks>
+    public void Poll()
+    {
+      SendText("GET STA");
+
+      SendText("GET IN0 SIG STA");
+    }
+
+    #endregion
+
+
+    #region Overrides of EssentialsBridgeableDevice
+
+    /// <summary>
+    /// Links the plugin device to the EISC bridge
+    /// </summary>
+    /// <param name="trilist"></param>
+    /// <param name="joinStart"></param>
+    /// <param name="joinMapKey"></param>
+    /// <param name="bridge"></param>
+    public override void LinkToApi(BasicTriList trilist, uint joinStart, string joinMapKey, EiscApiAdvanced bridge)
+    {
+      var joinMap = new JoinMap(joinStart);
+
+      // This adds the join map to the collection on the bridge
+      bridge?.AddJoinMap(Key, joinMap);
+
+      var customJoins = JoinMapHelper.TryGetJoinMapAdvancedForDevice(joinMapKey);
+
+      if (customJoins != null)
+      {
+        joinMap.SetCustomJoinData(customJoins);
+      }
+
+      this.LogDebug("Linking to Trilist {id}", trilist.ID.ToString("X"));
+      this.LogInformation("Linking to Bridge Type {type}", GetType().Name);
+
+      // TODO [ ] Implement bridge links as needed
+
+      // links to bridge
+      trilist.SetString(joinMap.DeviceName.JoinNumber, Name);
+
+      trilist.SetBoolSigAction(joinMap.Connect.JoinNumber, sig => Connect = sig);
+      ConnectFeedback.LinkInputSig(trilist.BooleanInput[joinMap.Connect.JoinNumber]);
+
+      StatusFeedback.LinkInputSig(trilist.UShortInput[joinMap.Status.JoinNumber]);
+      OnlineFeedback.LinkInputSig(trilist.BooleanInput[joinMap.IsOnline.JoinNumber]);
+
+      UpdateFeedbacks();
+
+      trilist.OnlineStatusChange += (o, a) =>
+      {
+        if (!a.DeviceOnLine) return;
+
+        trilist.SetString(joinMap.DeviceName.JoinNumber, Name);
+        UpdateFeedbacks();
+      };
+    }
+
+    #endregion
+
+    private void UpdateFeedbacks()
+    {
+      // TODO [ ] Update as needed for the plugin being developed
+      ConnectFeedback.FireUpdate();
+      OnlineFeedback.FireUpdate();
+      StatusFeedback.FireUpdate();
+    }
+
+    /// <summary>
+    /// Routes an input to an output for the specified signal type(s)
+    /// </summary>
+    /// <param name="inputSlotKey"></param>
+    /// <param name="outputSlotKey"></param>
+    /// <param name="type"></param>
+    public void Route(string inputSlotKey, string outputSlotKey, eRoutingSignalType type)
+    {
+      if (type.HasFlag(eRoutingSignalType.Video))
+      {
+        var input = InputSlots[inputSlotKey] as InputSlot;
+        var output = OutputSlots[outputSlotKey] as OutputSlot;
+        if (input == null || output == null)
+        {
+          Debug.LogError("Invalid input or output slot key");
+          return;
+        }
+        SetVideoRoute(input.SlotNumber, output.SlotNumber);
+      }
+
+      if (type.HasFlag(eRoutingSignalType.Audio))
+      {
+        var input = InputSlots[inputSlotKey] as InputSlot;
+        var output = OutputSlots[outputSlotKey] as OutputSlot;
+        if (input == null || output == null)
+        {
+          Debug.LogError("Invalid input or output slot key");
+          return;
+        }
+        SetAudioRoute(input.SlotNumber, output.SlotNumber);
+      }
+    }
+
+    /// <summary>
+    /// Executes a switch from an input to an output for the specified signal type(s)
+    /// </summary>
+    /// <param name="inputSelector"></param>
+    /// <param name="outputSelector"></param>
+    /// <param name="signalType"></param>
+    public void ExecuteSwitch(object inputSelector, object outputSelector, eRoutingSignalType signalType)
+    {
+      Debug.LogVerbose(this, "Making route from input {0} to output {1}", inputSelector, outputSelector);
+
+      if (signalType.HasFlag(eRoutingSignalType.Video))
+      {
+        SetVideoRoute((int)inputSelector, (int)outputSelector);
+      }
+      if (signalType.HasFlag(eRoutingSignalType.Audio))
+      {
+        SetAudioRoute((int)inputSelector, (int)outputSelector);
+      }
+
+    }
+
+    private void SetVideoRoute(int input, int output)
+    {
+      SendText($"SET OUT{output} VS IN{input}");
+    }
+
+    private void SetAudioRoute(int input, int output)
+    {
+      SendText($"SET OUT{output} AS IN{input}");
+    }
+  }
+}
+

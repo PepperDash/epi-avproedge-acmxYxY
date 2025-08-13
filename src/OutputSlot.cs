@@ -1,0 +1,33 @@
+﻿using PepperDash.Essentials.Core;
+using PepperDash.Essentials.Core.Routing;
+using System;
+using System.Collections.Generic;
+
+namespace PepperDash.Essentials.Plugin
+{
+  internal class OutputSlot : IRoutingOutputSlot
+  {
+    private readonly string key;
+
+    public string RxDeviceKey => string.Empty; // This device doesn't use receivers so this is empty
+
+    public Dictionary<eRoutingSignalType, IRoutingInputSlot> CurrentRoutes => throw new NotImplementedException();
+
+    public int SlotNumber { get; private set; }
+
+    public eRoutingSignalType SupportedSignalTypes => eRoutingSignalType.AudioVideo;
+
+    public string Name { get; private set; }
+
+    public string Key => $"{key}";
+
+    public event EventHandler OutputSlotChanged;
+
+    public OutputSlot(string key, string name, int slotNum)
+    {
+      this.key = key;
+      Name = name;
+      SlotNumber = slotNum;
+    }
+  }
+}

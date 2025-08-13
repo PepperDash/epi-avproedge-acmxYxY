@@ -35,7 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
- 	<PackageReference Include="PepperDashEssentials" Version="2.12.1" >
+ 	<PackageReference Include="PepperDashEssentials" Version="2.12.4">
   		<ExcludeAssets>runtime</ExcludeAssets>
  	</PackageReference>
   </ItemGroup>
@@ -46,5 +46,17 @@
 
   <ItemGroup>
     <None Remove="../output\epi-make-model.4Series.1.0.0-local.cplz" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="..\output\epi-aviproedge-acmxYxY.1.0.0-local.cplz" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="..\output\epi-aviproedge-acmxYxY.1.0.0-local.cplz" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="..\output\epi-aviproedge-acmxYxY.1.0.0-local.cplz" />
   </ItemGroup>
 </Project>

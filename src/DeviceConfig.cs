@@ -2,7 +2,7 @@
 using Newtonsoft.Json;
 using PepperDash.Essentials.Core;
 
-namespace PepperDash.Essentials.Plugin
+namespace PepperDash.Essentials.Plugin.AvProEdge
 {
 	/// <summary>
 	/// Plugin device configuration object
@@ -14,7 +14,7 @@ namespace PepperDash.Essentials.Plugin
 	/// "EssentialsPluginConfigObjectTemplate" renamed to "SamsungMdcConfig"
 	/// </example>
 	[ConfigSnippet("\"properties\":{\"control\":{}")]
-	public class MakeModelConfig
+	public class DeviceConfig
 	{
 		/// <summary>
 		/// JSON control object
@@ -69,7 +69,7 @@ namespace PepperDash.Essentials.Plugin
 		/// }
 		/// </code>
 		/// </example>
-		[JsonProperty("pollTimeMs")]
+		[JsonProperty("pollTimeMs", NullValueHandling = NullValueHandling.Ignore)]
 		public long PollTimeMs { get; set; }
 
 		/// <summary>
@@ -88,7 +88,7 @@ namespace PepperDash.Essentials.Plugin
 		/// }
 		/// </code>
 		/// </example>
-		[JsonProperty("warningTimeoutMs")]
+		[JsonProperty("warningTimeoutMs", NullValueHandling = NullValueHandling.Ignore)]
 		public long WarningTimeoutMs { get; set; }
 
 		/// <summary>
@@ -107,39 +107,9 @@ namespace PepperDash.Essentials.Plugin
 		/// }
 		/// </code>
 		/// </example>
-		[JsonProperty("errorTimeoutMs")]
+		[JsonProperty("errorTimeoutMs", NullValueHandling = NullValueHandling.Ignore)]
 		public long ErrorTimeoutMs { get; set; }
 
-		/// <summary>
-		/// Example dictionary of objects
-		/// </summary>
-		/// <remarks>
-		/// This is an example collection configuration object.  This should be modified or deleted as needed for the plugin being built.
-		/// </remarks>
-		/// <example>
-		/// <code>
-		/// "properties": {
-		///		"presets": {
-		///			"preset1": {
-		///				"enabled": true,
-		///				"name": "Preset 1"
-		///			}
-		///		}
-		/// }
-		/// </code>
-		/// </example>
-		/// <example>
-		/// <code>
-		/// "properties": {
-		///		"inputNames": {
-		///			"input1": "Input 1",
-		///			"input2": "Input 2"		
-		///		}
-		/// }
-		/// </code>
-		/// </example>
-		[JsonProperty("DeviceDictionary")]
-		public Dictionary<string, MakeModelConfigDictionary> DeviceDictionary { get; set; }
 
 		/// <summary>
 		/// Constuctor
@@ -148,48 +118,9 @@ namespace PepperDash.Essentials.Plugin
 		/// If using a collection you must instantiate the collection in the constructor
 		/// to avoid exceptions when reading the configuration file 
 		/// </remarks>
-		public MakeModelConfig()
+		public DeviceConfig()
 		{
-			DeviceDictionary = new Dictionary<string, MakeModelConfigDictionary>();
+
 		}
-	}
-
-	/// <summary>
-	/// Example plugin configuration dictionary object
-	/// </summary>
-	/// <remarks>
-	/// This is an example collection of configuration objects.  This can be modified or deleted as needed for the plugin being built.
-	/// </remarks>
-	/// <example>
-	/// <code>
-	/// "properties": {
-	///		"dictionary": {
-	///			"item1": {
-	///				"name": "Item 1 Name",
-	///				"value": "Item 1 Value"
-	///			}
-	///		}
-	/// }
-	/// </code>
-	/// </example>
-	public class MakeModelConfigDictionary
-	{
-		/// <summary>
-		/// Serializes collection name property
-		/// </summary>
-		/// <remarks>
-		/// This is an example collection of configuration objects.  This can be modified or deleted as needed for the plugin being built.
-		/// </remarks>
-		[JsonProperty("name")]
-		public string Name { get; set; }
-
-		/// <summary>
-		/// Serializes collection value property
-		/// </summary>
-		/// <remarks>
-		/// This is an example collection of configuration objects.  This can be modified or deleted as needed for the plugin being built.
-		/// </remarks>
-		[JsonProperty("value")]
-		public uint Value { get; set; }
 	}
 }
