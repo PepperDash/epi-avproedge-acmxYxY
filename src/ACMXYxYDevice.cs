@@ -210,7 +210,6 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
           FeedbackMatchObject = inputKey,
         });
 
-
       var outputSlot = new OutputSlot($"output{slotNum}", $"Output {slotNum}", slotNum);
       OutputSlots.Add(outputSlot.Key, outputSlot);
 
