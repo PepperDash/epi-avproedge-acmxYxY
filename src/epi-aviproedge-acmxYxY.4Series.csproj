@@ -7,7 +7,7 @@
     <LangVersion>10</LangVersion>
     <RootNamespace>PepperDash.Essentials.Plugin</RootNamespace>
 		<Deterministic>false</Deterministic>
-		<AssemblyTitle>PepperDash.AVProEdge.ACMXYxY</AssemblyTitle>
+		<AssemblyTitle>epi-aviproedge-acmxYxY.4Series.dll</AssemblyTitle>
 		<Company>PepperDash Technology</Company>
 		<Description>This software is a template for a PepperDash Essentials Plugin.</Description>
 		<Copyright>Copyright 2025</Copyright>
