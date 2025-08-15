@@ -11,6 +11,7 @@ using PepperDash.Essentials.Core.Routing;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
 
 namespace PepperDash.Essentials.Plugin.AvProEdge
 {
@@ -23,7 +24,7 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
   /// <example>
   /// "EssentialsPluginDeviceTemplate" renamed to "SamsungMdcDevice"
   /// </example>
-  public class ACMXYxYDevice : EssentialsBridgeableDevice, IMatrixRouting, IRouting
+  public class ACMXYxYDevice : EssentialsBridgeableDevice, IMatrixRouting, IRoutingWithFeedback
   {
     /// <summary>
     /// It is often desirable to store the config
@@ -35,7 +36,6 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
     /// </summary>
     private readonly GenericQueue receiveQueue;
 
-    #region IBasicCommunication Properties and Constructor.  Remove if not needed.
 
     private readonly IBasicCommunication comms;
     private readonly GenericCommunicationMonitor commsMonitor;
@@ -46,6 +46,7 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
     /// Set this value to that of the delimiter used by the API (if applicable)
     /// </summary>
     private const string commsDelimiter = "\r";
+
 
 
     /// <summary>
@@ -95,6 +96,10 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
 
     public RoutingPortCollection<RoutingOutputPort> OutputPorts { get; private set; }
 
+    public event RouteChangedEventHandler RouteChanged;
+
+    public List<RouteSwitchDescriptor> CurrentRoutes { get; private set; }
+
     /// <summary>
     /// Plugin device constructor for devices that need IBasicCommunication
     /// </summary>
@@ -124,14 +129,6 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
         this.config.ErrorTimeoutMs == 0 ? 60000 : this.config.ErrorTimeoutMs,
         Poll);
 
-      var socket = this.comms as ISocketStatus;
-      if (socket != null)
-      {
-        // device comms is IP **ELSE** device comms is RS232
-        socket.ConnectionChange += socket_ConnectionChange;
-        Connect = true;
-      }
-
       #region Communication data event handlers.  Comment out any that don't apply to the API type
 
       // Only one of the below handlers should be necessary.  
@@ -146,6 +143,8 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
 
       InputPorts = new RoutingPortCollection<RoutingInputPort>();
       OutputPorts = new RoutingPortCollection<RoutingOutputPort>();
+
+      CurrentRoutes = new List<RouteSwitchDescriptor>();
 
       if (typeName == DeviceFactory.ACMX8x8)
       {
@@ -167,38 +166,70 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
       }
     }
 
+    public override void Initialize()
+    {
+      base.Initialize();
+
+      var socket = this.comms as ISocketStatus;
+      if (socket != null)
+      {
+        // device comms is IP **ELSE** device comms is RS232
+        socket.ConnectionChange += socket_ConnectionChange;
+        Connect = true;
+      }
+    }
+
+    private string GetHdmiInputPortSelector(int slotNum)
+    {
+      return $"hdmi-in{slotNum}";
+    }
+
+    private string GetHdmiOutputPortSelector(int slotNum)
+    {
+      return $"hdmi-out{slotNum}";
+    }
+
+    private string GetAudioOutputPortSelector(int slotNum)
+    {
+      return $"audio-out{slotNum}";
+    }
+
     private void SetupSlots(int slotNum)
     {
       var inputSlot = new InputSlot($"input{slotNum}", $"Input {slotNum}", slotNum);
       InputSlots.Add(inputSlot.Key, inputSlot);
-      var inputKey = $"hdmi-in{slotNum}";
+      var inputKey = GetHdmiInputPortSelector(slotNum);
       InputPorts.Add(
         new RoutingInputPort(
           inputKey,
           eRoutingSignalType.AudioVideo,
           eRoutingPortConnectionType.Hdmi,
-          slotNum,
-          this));
+          inputKey,
+          this)
+        {
+          FeedbackMatchObject = inputKey,
+        });
+
 
       var outputSlot = new OutputSlot($"output{slotNum}", $"Output {slotNum}", slotNum);
       OutputSlots.Add(outputSlot.Key, outputSlot);
 
-      var hdmiOutputKey = $"hdmi-out{slotNum}";
+      var hdmiOutputKey = GetHdmiOutputPortSelector(slotNum);
       OutputPorts.Add(
         new RoutingOutputPort(
           hdmiOutputKey,
           eRoutingSignalType.AudioVideo,
           eRoutingPortConnectionType.Hdmi,
-          slotNum,
+          hdmiOutputKey,
           this));
-      var balAudOutputKey = $"audio-out{slotNum}";
-
+       
+      var balAudOutputKey = GetAudioOutputPortSelector(slotNum);
       OutputPorts.Add(
         new RoutingOutputPort(
           balAudOutputKey,
           eRoutingSignalType.Audio,
           eRoutingPortConnectionType.LineAudio,
-          slotNum,
+          balAudOutputKey,
           this));
     }
 
@@ -240,6 +271,8 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
                     var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value;
 
                     outputSlot.CurrentRoutes[eRoutingSignalType.Video] = inputSlot;
+
+                    UpdateCurrentRoutes(GetHdmiInputPortSelector(inputNumber), GetHdmiOutputPortSelector(outputNumber));
                 }
 
               return;
@@ -258,27 +291,29 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
                 var outputSlot = OutputSlots.FirstOrDefault(x => x.Value.SlotNumber == outputNumber).Value;
                 var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value;
                 outputSlot.CurrentRoutes[eRoutingSignalType.Audio] = inputSlot;
-              }
-              return;
+
+              UpdateCurrentRoutes(GetHdmiInputPortSelector(inputNumber), GetAudioOutputPortSelector(outputNumber));
+        }
+        return;
             }
 
             if (message.Contains("SIG STA"))
-      {
-        var regex = new System.Text.RegularExpressions.Regex(@"IN(\d+)\s+SIG\s+STA\s+(\d+)");
-        var match = regex.Match(message);
-        if (match.Success)
-        {
-          var inputNumber = int.Parse(match.Groups[1].Value);
-          var status = int.Parse(match.Groups[2].Value);
-          // Use inputNumber and status as needed
-          this.LogDebug("Input {0} status: {1}", inputNumber, status);
-          var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value as InputSlot;
-          if (inputSlot != null)
-          {
-            inputSlot.VideoSyncDetected = status == 1;
-          }
-        }
-      }
+            {
+              var regex = new System.Text.RegularExpressions.Regex(@"IN(\d+)\s+SIG\s+STA\s+(\d+)");
+              var match = regex.Match(message);
+              if (match.Success)
+              {
+                var inputNumber = int.Parse(match.Groups[1].Value);
+                var status = int.Parse(match.Groups[2].Value);
+                // Use inputNumber and status as needed
+                this.LogDebug("Input {0} status: {1}", inputNumber, status);
+                var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value as InputSlot;
+                if (inputSlot != null)
+                {
+                  inputSlot.VideoSyncDetected = status == 1;
+                }
+              }
+            }
     }
 
 
@@ -310,7 +345,6 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
       SendText("GET IN0 SIG STA");
     }
 
-    #endregion
 
 
     #region Overrides of EssentialsBridgeableDevice
@@ -417,11 +451,108 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
       if (signalType.HasFlag(eRoutingSignalType.Video))
       {
         SetVideoRoute((int)inputSelector, (int)outputSelector);
+
+        UpdateCurrentRoutes((string)inputSelector, (string)outputSelector);
       }
       if (signalType.HasFlag(eRoutingSignalType.Audio))
       {
         SetAudioRoute((int)inputSelector, (int)outputSelector);
+
+        UpdateCurrentRoutes((string)inputSelector, (string)outputSelector);
       }
+
+    }
+
+    /// <summary>
+    /// Updates the current routes based on the input and output numbers.
+    /// </summary>
+    /// <param name="inputSelector"></param>
+    /// <param name="outputSelector"></param>
+    private void UpdateCurrentRoutes(string inputSelector, string outputSelector)
+    {
+      RouteSwitchDescriptor descriptor;
+
+      descriptor = GetRouteDescriptorByOutputPort(outputSelector);
+
+      var inputPort = GetRoutingInputPortForSelector(inputSelector);
+
+      var outputPort = GetRoutingOutputPortForSelector(outputSelector);
+
+      if (outputPort is null)
+      {
+        Debug.LogMessage(Serilog.Events.LogEventLevel.Warning, "Unable to find port for {outputNum}", this, outputSelector);
+        return;
+      }
+
+      if (descriptor is null && outputPort is not null)
+      {
+        descriptor = new(outputPort, inputPort);
+
+        CurrentRoutes.Add(descriptor);
+      }
+      else
+      {
+        descriptor.InputPort = inputPort;
+      }
+
+      RouteChanged?.Invoke(this, descriptor);
+    }
+
+    /// <summary>
+    /// Gets the route descriptor for the specified output port number.
+    /// </summary>
+    /// <param name="selector"></param>
+    /// <returns></returns>
+    private RouteSwitchDescriptor GetRouteDescriptorByOutputPort(string selector)
+    {
+      return CurrentRoutes.FirstOrDefault(rd =>
+      {
+        if (rd.OutputPort.Selector is not string opSelector)
+        {
+          return false;
+        }
+
+        return opSelector == selector;
+      });
+    }
+
+    /// <summary>
+    /// Gets the routing input port for the specified input number.
+    /// </summary>
+    /// <param name="selector"></param>
+    /// <returns></returns>
+    private RoutingInputPort GetRoutingInputPortForSelector(string selector)
+    {
+
+      return InputPorts.FirstOrDefault(ip =>
+      {
+        if (ip.Selector is not string ipSelector)
+        {
+          return false;
+        }
+
+        return ipSelector == selector;
+      });
+    }
+
+
+    /// <summary>
+    /// Gets the routing output port for the specified output number.
+    /// </summary>
+    /// <param name="selector"></param>
+    /// <returns></returns>
+    private RoutingOutputPort GetRoutingOutputPortForSelector(string selector)
+    {
+
+      return OutputPorts.FirstOrDefault(op =>
+      {
+        if (op.Selector is not string opSelector)
+        {
+          return false;
+        }
+
+        return opSelector == selector;
+      });
 
     }
 
