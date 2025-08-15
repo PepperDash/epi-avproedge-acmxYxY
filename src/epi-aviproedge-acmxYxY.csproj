@@ -42,22 +42,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="../output\epi-make-model.4Series.1.0.0-local.cplz" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="../output\epi-make-model.4Series.1.0.0-local.cplz" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="..\output\epi-aviproedge-acmxYxY.1.0.0-local.cplz" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="..\output\epi-aviproedge-acmxYxY.1.0.0-local.cplz" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Remove="..\output\epi-aviproedge-acmxYxY.1.0.0-local.cplz" />
   </ItemGroup>
 </Project>
