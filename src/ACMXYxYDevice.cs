@@ -97,8 +97,8 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
 
     public RoutingPortCollection<RoutingOutputPort> OutputPorts { get; private set; }
 
-    public Dictionary<int, string> InputNames { get; private set; }
-    public Dictionary<int, string> OutputNames { get; private set; }
+    public Dictionary<int, string> InputNames { get; private set; } = new Dictionary<int, string>();
+    public Dictionary<int, string> OutputNames { get; private set; } = new Dictionary<int, string>();
 
     public event RouteChangedEventHandler RouteChanged;
 
@@ -147,9 +147,6 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
 
       InputPorts = new RoutingPortCollection<RoutingInputPort>();
       OutputPorts = new RoutingPortCollection<RoutingOutputPort>();
-
-      InputNames = new Dictionary<int, string>();
-      OutputNames = new Dictionary<int, string>();
 
       InputNames = this.config.InputNames;
       OutputNames = this.config.OutputNames;
@@ -411,9 +408,9 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
     private void UpdateFeedbacks()
     {
       // TODO [ ] Update as needed for the plugin being developed
-      ConnectFeedback.FireUpdate();
-      OnlineFeedback.FireUpdate();
-      StatusFeedback.FireUpdate();
+      ConnectFeedback?.FireUpdate();
+      OnlineFeedback?.FireUpdate();
+      StatusFeedback?.FireUpdate();
     }
 
     /// <summary>
