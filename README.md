@@ -10,20 +10,86 @@ Provided under MIT license
 
 Provides routing control for the AVProEdge ACMX Series Matrix Switchers via RS232 or TCP.
 
-## Dependencies
+## Communication Methods
 
-The [Essentials](https://github.com/PepperDash/Essentials) libraries are required. They referenced via nuget. You must have nuget.exe installed and in the `PATH` environment variable to use the following command. Nuget.exe is available at [nuget.org](https://dist.nuget.org/win-x86-commandline/latest/nuget.exe).
+***RS-232***
 
-### Installing Dependencies
+```json
+"control": {
+    "method": "com",
+    "controlPortDevKey": "processor",
+    "controlPortNumber": 1,
+    "comParams": {
+        "protocol": "RS232",
+        "baudRate": 9600,
+        "dataBits": 8,
+        "stopBits": 1,
+        "parity": "None",
+        "softwareHandshake": "None",
+        "hardwareHandshake": "None",
+        "pacing": 500
+    }
+}
+```
 
-Dependencies will be automatically installed by your IDE if using VS2022 or later
+***Telnet***
 
-## Build Instructions (PepperDash Internal) 
+```json
+"control": {
+    "method": "tcpIp",
+    "tcpSshProperties": {
+        "address": "0.0.0.0",
+        "port": 23,
+        "username": "",
+        "password": "",
+        "autoReconnect": true,
+        "autoReconnectIntervalMs": 5000
+    }
+}
+```
 
-## Generating Nuget Package
+## Device Configuration
 
-A nuget package is automatically generated when the plugin is build. To modify the name and other details of the package, edit the following properties in the .csproj file:
-
-1. `PackageId` - This is the name that will be used to pull the package from Nuget once it's published
-2. `PackgeProjectUrl` - This should match the URL for the plugin repo
-3. `AssemblyTitle` - This is the dll file name that is will show on a processor when the plugin is loaded
+```json
+{
+    "key": "switcher-1",
+    "name": "AVPro Edge AC-MX-88",
+    "type": "acmx8x8",
+    "group": "switcher",
+    "properties": {
+        "control": {
+            "method": "tcpIp",            
+            "tcpSshProperties": {
+                "address": "0.0.0.0",
+                "port": 23,
+                "username": "",
+                "password": "",
+                "autoReconnect": true,
+                "autoReconnectIntervalMs": 5000
+            }
+        },
+        "pollTime": 60000,
+        "noRouteText": "None",
+        "inputNames": {
+            "1": "Input 1",
+            "2": "Input 2",
+            "3": "Input 3",
+            "4": "Input 4",
+            "5": "Input 5",
+            "6": "Input 6",
+            "7": "Input 7",
+            "8": "Input 8"
+        },
+        "outputNames": {
+            "1": "Output 1",
+            "2": "Output 2",
+            "3": "Output 3",
+            "4": "Output 4",
+            "5": "Output 5",
+            "6": "Output 6",
+            "7": "Output 7",
+            "8": "Output 8"
+        }
+    }
+}
+```
