@@ -22,7 +22,7 @@ namespace PepperDash.Essentials.Plugin
 
     public int SlotNumber { get; private set; }
 
-    public eRoutingSignalType SupportedSignalTypes => eRoutingSignalType.AudioVideo;
+    public eRoutingSignalType SupportedSignalTypes { get; private set; }
 
     public string Name { get; private set; }
 
@@ -35,6 +35,22 @@ namespace PepperDash.Essentials.Plugin
       this.key = key;
       Name = name;
       SlotNumber = slotNum;
+    }
+
+    public void SetInputRoute(eRoutingSignalType type, IRoutingInputSlot input)
+    {
+      if (currentRoutes.ContainsKey(type))
+      {
+        currentRoutes[type] = input;
+
+        OutputSlotChanged?.Invoke(this, new EventArgs());
+
+        return;
+      }
+
+      currentRoutes.Add(type, input);
+
+      OutputSlotChanged?.Invoke(this, new EventArgs());
     }
   }
 }
