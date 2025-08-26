@@ -12,19 +12,12 @@ using PepperDash.Essentials.Core.Routing;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices.ComTypes;
 
 namespace PepperDash.Essentials.Plugin.AvProEdge
 {
   /// <summary>
   /// Plugin device template for third party devices that use IBasicCommunication
   /// </summary>
-  /// <remarks>
-  /// Rename the class to match the device plugin being developed.
-  /// </remarks>
-  /// <example>
-  /// "EssentialsPluginDeviceTemplate" renamed to "SamsungMdcDevice"
-  /// </example>
   public class ACMXYxYDevice : EssentialsBridgeableDevice, IMatrixRouting, IRoutingWithFeedback, ICommunicationMonitor, IDeviceInfoProvider
   {
     /// <summary>
@@ -54,9 +47,6 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
     /// <summary>
     /// Connects/disconnects the comms of the plugin device
     /// </summary>
-    /// <remarks>
-    /// triggers the comms.Connect/Disconnect as well as thee comms monitor start/stop
-    /// </remarks>
     public bool Connect
     {
       get { return comms.IsConnected; }
@@ -106,7 +96,7 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
 
     public List<RouteSwitchDescriptor> CurrentRoutes { get; private set; }
 
-    public DeviceInfo DeviceInfo => throw new NotImplementedException();
+    public DeviceInfo DeviceInfo { get; private set; }
 
     /// <summary>
     /// Plugin device constructor for devices that need IBasicCommunication
@@ -304,13 +294,13 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
         {
           var outputNumber = int.Parse(match.Groups[1].Value);
           var inputNumber = int.Parse(match.Groups[2].Value);
-          
+
           // Use outputNumber and inputNumber as needed
           this.LogDebug("Audio Route detected: Input {0} to Output {1}", inputNumber, outputNumber);
-          
+
           var outputSlot = OutputSlots.FirstOrDefault(x => x.Value.SlotNumber == outputNumber).Value;
           var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value;
-          
+
           (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.Audio, inputSlot);
 
           UpdateCurrentRoutes(GetHdmiInputPortSelector(inputNumber), GetAudioOutputPortSelector(outputNumber));
@@ -588,8 +578,22 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
 
     public void UpdateDeviceInfo()
     {
-      throw new NotImplementedException();
+      if (!(comms is GenericTcpIpClient socket))
+        return;
+
+      DeviceInfo = new DeviceInfo
+      {
+        FirmwareVersion = "",
+        HostName = "",
+        IpAddress = socket.Hostname,
+        MacAddress = "",
+        SerialNumber = ""
+      };
+
+      var handler = DeviceInfoChanged;
+      if (handler == null) return;
+
+      handler(this, new DeviceInfoEventArgs { DeviceInfo = DeviceInfo });
     }
   }
 }
-
