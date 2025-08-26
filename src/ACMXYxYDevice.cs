@@ -24,7 +24,7 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
   /// <example>
   /// "EssentialsPluginDeviceTemplate" renamed to "SamsungMdcDevice"
   /// </example>
-  public class ACMXYxYDevice : EssentialsBridgeableDevice, IMatrixRouting, IRoutingWithFeedback
+  public class ACMXYxYDevice : EssentialsBridgeableDevice, IMatrixRouting, IRoutingWithFeedback, ICommunicationMonitor
   {
     /// <summary>
     /// It is often desirable to store the config
@@ -38,8 +38,6 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
 
 
     private readonly IBasicCommunication comms;
-    private readonly GenericCommunicationMonitor commsMonitor;
-
     private readonly CommunicationGather commsGather;
 
     /// <summary>
@@ -47,7 +45,10 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
     /// </summary>
     private const string commsDelimiter = "\r";
 
-
+    /// <summary>
+    /// Communication monitor for the device
+    /// </summary>
+    public StatusMonitorBase CommunicationMonitor { get; private set; }
 
     /// <summary>
     /// Connects/disconnects the comms of the plugin device
@@ -63,12 +64,12 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
         if (value)
         {
           comms.Connect();
-          commsMonitor.Start();
+          CommunicationMonitor.Start();
         }
         else
         {
           comms.Disconnect();
-          commsMonitor.Stop();
+          CommunicationMonitor.Stop();
         }
       }
     }
@@ -96,6 +97,9 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
 
     public RoutingPortCollection<RoutingOutputPort> OutputPorts { get; private set; }
 
+    public Dictionary<int, string> InputNames { get; private set; }
+    public Dictionary<int, string> OutputNames { get; private set; }
+
     public event RouteChangedEventHandler RouteChanged;
 
     public List<RouteSwitchDescriptor> CurrentRoutes { get; private set; }
@@ -117,16 +121,16 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
       receiveQueue = new GenericQueue(key + "-rxqueue");  // If you need to set the thread priority, use one of the available overloaded constructors.
 
       ConnectFeedback = new BoolFeedback("connect", () => Connect);
-      OnlineFeedback = new BoolFeedback("online", () => commsMonitor.IsOnline);
-      StatusFeedback = new IntFeedback("status", () => (int)commsMonitor.Status);
+      OnlineFeedback = new BoolFeedback("online", () => CommunicationMonitor.IsOnline);
+      StatusFeedback = new IntFeedback("status", () => (int)CommunicationMonitor.Status);
 
       this.comms = comms;
-      commsMonitor = new GenericCommunicationMonitor(
+      CommunicationMonitor = new GenericCommunicationMonitor(
         this,
         this.comms,
-        this.config.PollTimeMs == 0 ? 30000 : this.config.PollTimeMs,
-        this.config.WarningTimeoutMs == 0 ? 30000 : this.config.WarningTimeoutMs,
-        this.config.ErrorTimeoutMs == 0 ? 60000 : this.config.ErrorTimeoutMs,
+        this.config.PollTimeMs == 0 ? 60000 : this.config.PollTimeMs,
+        180000,
+        300000,
         Poll);
 
       #region Communication data event handlers.  Comment out any that don't apply to the API type
@@ -143,6 +147,12 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
 
       InputPorts = new RoutingPortCollection<RoutingInputPort>();
       OutputPorts = new RoutingPortCollection<RoutingOutputPort>();
+
+      InputNames = new Dictionary<int, string>();
+      OutputNames = new Dictionary<int, string>();
+
+      InputNames = this.config.InputNames;
+      OutputNames = this.config.OutputNames;
 
       CurrentRoutes = new List<RouteSwitchDescriptor>();
 
@@ -196,7 +206,8 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
 
     private void SetupSlots(int slotNum)
     {
-      var inputSlot = new InputSlot($"input{slotNum}", $"Input {slotNum}", slotNum);
+      var inputName = InputNames.ContainsKey(slotNum) ? InputNames[slotNum] : $"Input {slotNum}";
+      var inputSlot = new InputSlot($"input{slotNum}", $"{inputName}", slotNum);
       InputSlots.Add(inputSlot.Key, inputSlot);
       var inputKey = GetHdmiInputPortSelector(slotNum);
       InputPorts.Add(
@@ -210,7 +221,8 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
           FeedbackMatchObject = inputKey,
         });
 
-      var outputSlot = new OutputSlot($"output{slotNum}", $"Output {slotNum}", slotNum);
+      var outputName = OutputNames.ContainsKey(slotNum) ? OutputNames[slotNum] : $"Output {slotNum}";
+      var outputSlot = new OutputSlot($"output{slotNum}", $"{outputName}", slotNum);
       OutputSlots.Add(outputSlot.Key, outputSlot);
 
       var hdmiOutputKey = GetHdmiOutputPortSelector(slotNum);
@@ -221,7 +233,7 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
           eRoutingPortConnectionType.Hdmi,
           hdmiOutputKey,
           this));
-       
+
       var balAudOutputKey = GetAudioOutputPortSelector(slotNum);
       OutputPorts.Add(
         new RoutingOutputPort(
@@ -251,68 +263,68 @@ namespace PepperDash.Essentials.Plugin.AvProEdge
     /// This method should perform any necessary parsing of feedback messages from the device
     /// </summary>
     /// <param name="message"></param>
-        void ProcessFeedbackMessage(string message)
+    private void ProcessFeedbackMessage(string message)
+    {
+      if (message.Contains("VS"))
+      {
+        var regex = new System.Text.RegularExpressions.Regex(@"OUT(\d+)\s+VS\s+IN(\d+)");
+        var match = regex.Match(message);
+
+        if (match.Success)
         {
-            if (message.Contains("VS"))
-            {
-                var regex = new System.Text.RegularExpressions.Regex(@"OUT(\d+)\s+VS\s+IN(\d+)");
-                var match = regex.Match(message);
+          var outputNumber = int.Parse(match.Groups[1].Value);
+          var inputNumber = int.Parse(match.Groups[2].Value);
 
-                if (match.Success)
-                {
-                    var outputNumber = int.Parse(match.Groups[1].Value);
-                    var inputNumber = int.Parse(match.Groups[2].Value);
+          // Use outputNumber and inputNumber as needed
+          this.LogDebug("Route detected: Input {0} to Output {1}", inputNumber, outputNumber);
 
-                    // Use outputNumber and inputNumber as needed
-                    this.LogDebug("Route detected: Input {0} to Output {1}", inputNumber, outputNumber);
+          var outputSlot = OutputSlots.FirstOrDefault(x => x.Value.SlotNumber == outputNumber).Value;
+          var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value;
 
-                    var outputSlot = OutputSlots.FirstOrDefault(x => x.Value.SlotNumber == outputNumber).Value;
-                    var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value;
+          outputSlot.CurrentRoutes[eRoutingSignalType.Video] = inputSlot;
 
-                    outputSlot.CurrentRoutes[eRoutingSignalType.Video] = inputSlot;
+          UpdateCurrentRoutes(GetHdmiInputPortSelector(inputNumber), GetHdmiOutputPortSelector(outputNumber));
+        }
 
-                    UpdateCurrentRoutes(GetHdmiInputPortSelector(inputNumber), GetHdmiOutputPortSelector(outputNumber));
-                }
+        return;
+      }
 
-              return;
-            }
+      if (message.Contains("AS"))
+      {
+        var regex = new System.Text.RegularExpressions.Regex(@"OUT(\d+)\s+AS\s+IN(\d+)");
+        var match = regex.Match(message);
+        if (match.Success)
+        {
+          var outputNumber = int.Parse(match.Groups[1].Value);
+          var inputNumber = int.Parse(match.Groups[2].Value);
+          // Use outputNumber and inputNumber as needed
+          this.LogDebug("Audio Route detected: Input {0} to Output {1}", inputNumber, outputNumber);
+          var outputSlot = OutputSlots.FirstOrDefault(x => x.Value.SlotNumber == outputNumber).Value;
+          var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value;
+          outputSlot.CurrentRoutes[eRoutingSignalType.Audio] = inputSlot;
 
-            if (message.Contains("AS"))
-            {
-              var regex = new System.Text.RegularExpressions.Regex(@"OUT(\d+)\s+AS\s+IN(\d+)");
-              var match = regex.Match(message);
-              if (match.Success)
-              {
-                var outputNumber = int.Parse(match.Groups[1].Value);
-                var inputNumber = int.Parse(match.Groups[2].Value);
-                // Use outputNumber and inputNumber as needed
-                this.LogDebug("Audio Route detected: Input {0} to Output {1}", inputNumber, outputNumber);
-                var outputSlot = OutputSlots.FirstOrDefault(x => x.Value.SlotNumber == outputNumber).Value;
-                var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value;
-                outputSlot.CurrentRoutes[eRoutingSignalType.Audio] = inputSlot;
-
-              UpdateCurrentRoutes(GetHdmiInputPortSelector(inputNumber), GetAudioOutputPortSelector(outputNumber));
+          UpdateCurrentRoutes(GetHdmiInputPortSelector(inputNumber), GetAudioOutputPortSelector(outputNumber));
         }
         return;
-            }
+      }
 
-            if (message.Contains("SIG STA"))
-            {
-              var regex = new System.Text.RegularExpressions.Regex(@"IN(\d+)\s+SIG\s+STA\s+(\d+)");
-              var match = regex.Match(message);
-              if (match.Success)
-              {
-                var inputNumber = int.Parse(match.Groups[1].Value);
-                var status = int.Parse(match.Groups[2].Value);
-                // Use inputNumber and status as needed
-                this.LogDebug("Input {0} status: {1}", inputNumber, status);
-                var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value as InputSlot;
-                if (inputSlot != null)
-                {
-                  inputSlot.VideoSyncDetected = status == 1;
-                }
-              }
-            }
+      if (message.Contains("SIG STA"))
+      {
+        var regex = new System.Text.RegularExpressions.Regex(@"IN(\d+)\s+SIG\s+STA\s+(\d+)");
+        var match = regex.Match(message);
+        if (match.Success)
+        {
+          var inputNumber = int.Parse(match.Groups[1].Value);
+          var status = int.Parse(match.Groups[2].Value);
+          // Use inputNumber and status as needed
+          this.LogDebug("Input {0} status: {1}", inputNumber, status);
+          var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value as InputSlot;
+          if (inputSlot != null)
+          {
+            inputSlot.VideoSyncDetected = status == 1;
+          }
+        }
+      }
     }
 
 
