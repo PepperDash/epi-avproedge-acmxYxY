@@ -4,9 +4,9 @@
     <InformationalVersion>$(Version)</InformationalVersion>
     <Authors>PepperDash Technology</Authors>
     <Company>PepperDash Technology</Company>
-    <Product>PepperDash Essentials Plugin Template</Product>
+    <Product>AVProEdge AC-MXYxY</Product>
     <Copyright>Copyright © 2025</Copyright>
-    <RepositoryUrl>https://github.com/PepperDash/EssentialsPluginTemplate.git</RepositoryUrl>
+    <RepositoryUrl>https://github.com/PepperDash/epi-avproedge-acmxYxY.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>Crestron; 4series</PackageTags>
     <PackageOutputPath>..\output</PackageOutputPath>

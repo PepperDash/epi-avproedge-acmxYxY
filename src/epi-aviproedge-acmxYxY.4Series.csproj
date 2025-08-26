@@ -4,9 +4,10 @@
 	</PropertyGroup>
 	<PropertyGroup>
 		<TargetFramework>net472</TargetFramework>
-		<RootNamespace>PepperDash.Essentials.Plugin</RootNamespace>
+    <LangVersion>10</LangVersion>
+    <RootNamespace>PepperDash.Essentials.Plugin</RootNamespace>
 		<Deterministic>false</Deterministic>
-		<AssemblyTitle>PepperDash.Essentials.Plugin.Make.Model</AssemblyTitle>
+		<AssemblyTitle>epi-aviproedge-acmxYxY.4Series.dll</AssemblyTitle>
 		<Company>PepperDash Technology</Company>
 		<Description>This software is a template for a PepperDash Essentials Plugin.</Description>
 		<Copyright>Copyright 2025</Copyright>
@@ -15,9 +16,9 @@
 		<InformationalVersion>$(Version)</InformationalVersion>
 		<OutputPath>bin\$(Configuration)\</OutputPath>
 		<Authors>PepperDash Technology</Authors>
-		<PackageId>Pepperdash.Essentials.Plugins.Template</PackageId>
+		<PackageId>Pepperdash.Essentials.Plugins.AVProEdge.ACMXYxY</PackageId>
 		<PackageProjectUrl>https://github.com/PepperDash/EssentialsPluginTemplate.git</PackageProjectUrl>
-		<PackageTags>crestron 4series essentials plugin template</PackageTags>
+		<PackageTags>crestron 4series essentials avproedge matrix acmx8x8 acmx16x16</PackageTags>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -35,16 +36,13 @@
   </ItemGroup>
 
   <ItemGroup>
- 	<PackageReference Include="PepperDashEssentials" Version="2.12.1" >
+ 	<PackageReference Include="PepperDashEssentials" Version="2.12.4">
   		<ExcludeAssets>runtime</ExcludeAssets>
  	</PackageReference>
   </ItemGroup>
 
+  
   <ItemGroup>
-    <None Remove="../output\epi-make-model.4Series.1.0.0-local.cplz" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="../output\epi-make-model.4Series.1.0.0-local.cplz" />
+    <None Remove="..\output\epi-aviproedge-acmxYxY.1.0.0-local.cplz" />
   </ItemGroup>
 </Project>

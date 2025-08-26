@@ -1,6 +1,6 @@
 ![PepperDash Essentials Pluign Logo](/images/essentials-plugin-blue.png)
 
-# Essentials Plugin Template (c) 2025
+# Essentials Plugin for AVProEdge ACMX Series Matrix Switchers (c) 2025
 
 ## License
 
@@ -8,41 +8,88 @@ Provided under MIT license
 
 ## Overview
 
-Fork this repo when creating a new plugin for Essentials. For more information about plugins, refer to the Essentials Wiki [Plugins](https://pepperdash.github.io/Essentials/docs/Plugins.html) article.
+Provides routing control for the AVProEdge ACMX Series Matrix Switchers via RS232 or TCP.
 
-This repo contains example classes for the three main categories of devices:
-* `MakeModelDevice`: Used for most third party devices which require communication over a streaming mechanism such as a Com port, TCP/SSh/UDP socket, CEC, etc
-* `MakeModelLogicDevice`:  Used for devices that contain logic, but don't require any communication with third parties outside the program
-* `MakeModelCrestronDevice`:  Used for devices that represent a piece of Crestron hardware
+## Communication Methods
 
-There are matching factory classes for each of the three categories of devices.  The `MakeModelConfigObject` should be used as a template and modified for any of the categories of device.  Same goes for the `MakeModeleBridgeJoinMap`.
+***RS-232***
 
-This also illustrates how a plugin can contain multiple devices.
+```json
+"control": {
+    "method": "com",
+    "controlPortDevKey": "processor",
+    "controlPortNumber": 1,
+    "comParams": {
+        "protocol": "RS232",
+        "baudRate": 9600,
+        "dataBits": 8,
+        "stopBits": 1,
+        "parity": "None",
+        "softwareHandshake": "None",
+        "hardwareHandshake": "None",
+        "pacing": 500
+    }
+}
+```
 
-## Cloning Instructions
+***Telnet***
 
-After forking this repository into your own GitHub space, you can create a new repository using this one as the template.  Then you must install the necessary dependencies as indicated below.
+```json
+"control": {
+    "method": "tcpIp",
+    "tcpSshProperties": {
+        "address": "0.0.0.0",
+        "port": 23,
+        "username": "",
+        "password": "",
+        "autoReconnect": true,
+        "autoReconnectIntervalMs": 5000
+    }
+}
+```
 
-## Dependencies
+## Device Configuration
 
-The [Essentials](https://github.com/PepperDash/Essentials) libraries are required. They referenced via nuget. You must have nuget.exe installed and in the `PATH` environment variable to use the following command. Nuget.exe is available at [nuget.org](https://dist.nuget.org/win-x86-commandline/latest/nuget.exe).
-
-### Installing Dependencies
-
-Dependencies will be automatically installed when
-
-### Instructions for Renaming Solution and Files
-
-See the Task List in Visual Studio for a guide on how to start using the template.  There is extensive inline documentation and examples as well.
-
-For renaming instructions in particular, see the XML `remarks` tags on class definitions
-
-## Build Instructions (PepperDash Internal) 
-
-## Generating Nuget Package
-
-A nuget package is automatically generated when the plugin is build. To modify the name and other details of the package, edit the following properties in the .csproj file:
-
-1. `PackageId` - This is the name that will be used to pull the package from Nuget once it's published
-2. `PackgeProjectUrl` - This should match the URL for the plugin repo
-3. `AssemblyTitle` - This is the dll file name that is will show on a processor when the plugin is loaded
+```json
+{
+    "key": "switcher-1",
+    "name": "AVPro Edge AC-MX-88",
+    "type": "acmx8x8",
+    "group": "switcher",
+    "properties": {
+        "control": {
+            "method": "tcpIp",            
+            "tcpSshProperties": {
+                "address": "0.0.0.0",
+                "port": 23,
+                "username": "",
+                "password": "",
+                "autoReconnect": true,
+                "autoReconnectIntervalMs": 5000
+            }
+        },
+        "pollTime": 60000,
+        "noRouteText": "None",
+        "inputNames": {
+            "1": "Input 1",
+            "2": "Input 2",
+            "3": "Input 3",
+            "4": "Input 4",
+            "5": "Input 5",
+            "6": "Input 6",
+            "7": "Input 7",
+            "8": "Input 8"
+        },
+        "outputNames": {
+            "1": "Output 1",
+            "2": "Output 2",
+            "3": "Output 3",
+            "4": "Output 4",
+            "5": "Output 5",
+            "6": "Output 6",
+            "7": "Output 7",
+            "8": "Output 8"
+        }
+    }
+}
+```
