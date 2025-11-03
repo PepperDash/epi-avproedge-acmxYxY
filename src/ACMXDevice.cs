@@ -252,6 +252,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 slot.VideoSyncDetected = true;
             }
 
+
             InputSlots.Add(key, slot);
 
             InputPorts.Add(
@@ -271,7 +272,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             InputPorts.Add(
               new RoutingInputPort(
                 key,
-                eRoutingSignalType.Audio,
+                eRoutingSignalType.Audio | eRoutingSignalType.SecondaryAudio,
                 eRoutingPortConnectionType.LineAudio,
                 slotNum,
                 this,
@@ -311,7 +312,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             OutputPorts.Add(
               new RoutingOutputPort(
                 key,
-                eRoutingSignalType.Audio,
+                eRoutingSignalType.Audio | eRoutingSignalType.SecondaryAudio,
                 eRoutingPortConnectionType.LineAudio,
                 slotNum,
                 this,
@@ -394,14 +395,14 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 var outputNumber = uint.Parse(switchMatch.Groups[1].Value);
                 var inputNumber = uint.Parse(switchMatch.Groups[2].Value);
 
-                this.LogDebug($"ProcessFeedbackMessage: Switch response Input-{inputNumber} to Output-{outputNumber}");
+                this.LogDebug($"ProcessVideoRouteFeedback: Switch response Input-{inputNumber} to Output-{outputNumber}");
 
                 var outputSlot = OutputSlots.FirstOrDefault(x => x.Value.SlotNumber == outputNumber).Value;
                 var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value;
 
                 if (outputSlot != null && inputSlot != null)
                 {
-                    this.LogDebug($"ProcessFeedbackMessage: route feedback {inputSlot.SlotNumber}-{inputSlot.Name} to {outputSlot.SlotNumber}-{outputSlot.Name}");
+                    this.LogDebug($"ProcessVideoRouteFeedback: route feedback {inputSlot.SlotNumber}-{inputSlot.Name} to {outputSlot.SlotNumber}-{outputSlot.Name}");
 
                     (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.Video, inputSlot);
                     (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.Audio, inputSlot);
@@ -411,11 +412,11 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 }
                 else if (outputSlot == null)
                 {
-                    this.LogWarning("ProcessFeedbackMessage: Could not find outputNum slot {0}", outputNumber);
+                    this.LogWarning("ProcessVideoRouteFeedback: Could not find outputNum slot {0}", outputNumber);
                 }
                 else if (inputSlot == null)
                 {
-                    this.LogWarning("ProcessFeedbackMessage: Could not find inputNum slot {0}", inputNumber);
+                    this.LogWarning("ProcessVideoRouteFeedback: Could not find inputNum slot {0}", inputNumber);
                 }
 
                 return;
@@ -434,14 +435,14 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 var outputNumber = uint.Parse(switchMatch.Groups[1].Value);
                 var inputNumber = uint.Parse(switchMatch.Groups[2].Value);
 
-                this.LogDebug($"ProcessFeedbackMessage: Switch response Input-{inputNumber} to Output-{outputNumber}");
+                this.LogDebug($"ProcessAudioRouteFeedback: Switch response Input-{inputNumber} to Output-{outputNumber}");
 
                 var outputSlot = OutputSlots.FirstOrDefault(x => x.Value.SlotNumber == outputNumber).Value;
                 var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value;
 
                 if (outputSlot != null && inputSlot != null)
                 {
-                    this.LogDebug($"ProcessFeedbackMessage: route feedback {inputSlot.SlotNumber}-{inputSlot.Name} to {outputSlot.SlotNumber}-{outputSlot.Name}");
+                    this.LogDebug($"ProcessAudioRouteFeedback: route feedback {inputSlot.SlotNumber}-{inputSlot.Name} to {outputSlot.SlotNumber}-{outputSlot.Name}");
 
                     (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.Audio, inputSlot);
 
@@ -450,11 +451,11 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 }
                 else if (outputSlot == null)
                 {
-                    this.LogWarning("ProcessFeedbackMessage: Could not find outputNum slot {0}", outputNumber);
+                    this.LogWarning("ProcessAudioRouteFeedback: Could not find outputNum slot {0}", outputNumber);
                 }
                 else if (inputSlot == null)
                 {
-                    this.LogWarning("ProcessFeedbackMessage: Could not find inputNum slot {0}", inputNumber);
+                    this.LogWarning("ProcessAudioRouteFeedback: Could not find inputNum slot {0}", inputNumber);
                 }
 
                 return;
@@ -474,14 +475,14 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 var slotNumber = uint.Parse(signalMatch.Groups[2].Value);
                 var status = int.Parse(signalMatch.Groups[3].Value);
 
-                this.LogDebug($"ProcessFeedbackMessage: Signal status {direction}-{slotNumber} is {status}");
+                this.LogDebug($"ProcessSignalStatusFeedback: Signal status {direction}-{slotNumber} is {status}");
 
                 // Update the signal status for the corresponding slot
                 if (direction.Equals("IN", StringComparison.OrdinalIgnoreCase))
                 {
                     if (InputSlots.FirstOrDefault(x => x.Value.SlotNumber == slotNumber).Value is not InputSlot inputSlot)
                     {
-                        this.LogError("ParseSyncStatus: Could not find inputslot.SlotNumber {0} for sync status update", slotNumber);
+                        this.LogError("ProcessSignalStatusFeedback: Could not find inputslot.SlotNumber {0} for sync status update", slotNumber);
                         return;
                     }
 
@@ -525,6 +526,8 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         public void SendText(string text)
         {
             if (string.IsNullOrEmpty(text)) return;
+
+            this.LogVerbose("SendText: '{0}'", text);
 
             comms.SendText(string.Format("{0}{1}", text, commsDelimiter));
         }
@@ -735,6 +738,8 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         /// <param name="type"></param>
         public void Route(string inputSlotKey, string outputSlotKey, eRoutingSignalType type)
         {
+            this.LogInformation($"Route: Making {type.ToString().ToLower()} route from inputSlotKey {inputSlotKey} to outputSlotKey {outputSlotKey}");
+
             try
             {
                 var inputSlot = InputSlots.TryGetValue(inputSlotKey, out var inSlot) ? inSlot as InputSlot : null;
