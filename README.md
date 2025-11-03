@@ -10,9 +10,15 @@ Provided under MIT license
 
 Provides routing control for the AVProEdge ACMX Series Matrix Switchers via RS232 or TCP.
 
+[AVProEdge ACMX-88 User Manual](https://avproglobal.egnyte.com/dl/3OCoTbD5Gh)
+
+[AVProEdge ACMX-1616 User Manual](https://avproglobal.egnyte.com/dl/4nwJhTzW8D)
+
 ## Communication Methods
 
 ***RS-232***
+
+Default Baud: `57600`
 
 ```json
 "control": {
@@ -21,7 +27,7 @@ Provides routing control for the AVProEdge ACMX Series Matrix Switchers via RS23
     "controlPortNumber": 1,
     "comParams": {
         "protocol": "RS232",
-        "baudRate": 9600,
+        "baudRate": 57600,
         "dataBits": 8,
         "stopBits": 1,
         "parity": "None",
