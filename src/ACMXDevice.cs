@@ -257,7 +257,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             InputPorts.Add(
               new RoutingInputPort(
                 key,
-                eRoutingSignalType.AudioVideo,
+                eRoutingSignalType.AudioVideo | eRoutingSignalType.SecondaryAudio,
                 eRoutingPortConnectionType.Hdmi,
                 slotNum,
                 this,
@@ -286,7 +286,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             OutputPorts.Add(
               new RoutingOutputPort(
                 key,
-                eRoutingSignalType.AudioVideo,
+                eRoutingSignalType.AudioVideo | eRoutingSignalType.SecondaryAudio,
                 eRoutingPortConnectionType.Hdmi,
                 slotNum,
                 this,
@@ -743,6 +743,11 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 {
                     SetAudioRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
                 }
+
+                if (type.HasFlag(eRoutingSignalType.SecondaryAudio))
+                {
+                    SetAudioRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
+                }
             }
             catch (Exception ex)
             {
@@ -783,6 +788,12 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 }
                 // route audio
                 if (signalType.HasFlag(eRoutingSignalType.Audio))
+                {
+                    SetAudioRoute(inputNum, outputNum);
+                    UpdateCurrentRoutes(inputNum, outputNum);
+                }
+                // route secondary audio
+                if (signalType.HasFlag(eRoutingSignalType.SecondaryAudio))
                 {
                     SetAudioRoute(inputNum, outputNum);
                     UpdateCurrentRoutes(inputNum, outputNum);
