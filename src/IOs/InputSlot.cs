@@ -1,8 +1,8 @@
-﻿using PepperDash.Essentials.Core;
+﻿using System;
+using PepperDash.Essentials.Core;
 using PepperDash.Essentials.Core.Routing;
-using System;
 
-namespace PepperDash.Essentials.Plugin
+namespace PepperDash.Essentials.Plugin.IOs
 {
   internal class InputSlot : IRoutingInputSlot
   {
@@ -45,6 +45,7 @@ namespace PepperDash.Essentials.Plugin
       this.key = key;
       Name = name;
       IsOnline = new BoolFeedback("IsOnline", () => true); // Placeholder for actual online status since the input doesn't have it's own status independent of the chasses
+      IsOnline.FireUpdate();
       SlotNumber = slotNum;
     }
   }

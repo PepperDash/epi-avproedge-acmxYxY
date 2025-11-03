@@ -1,23 +1,17 @@
 ﻿using PepperDash.Essentials.Core;
+using PepperDash.Essentials.Core.Bridges;
 
 namespace PepperDash.Essentials.Plugin
 {
 	/// <summary>
 	/// Plugin device Bridge Join Map
 	/// </summary>
-	/// <remarks>
-	/// Rename the class to match the device plugin being developed.  Reference Essentials JoinMaps, if one exists for the device plugin being developed
-	/// </remarks>
-	/// <see cref="PepperDash.Essentials.Core.Bridges"/>
-	/// <example>
-	/// "EssentialsPluginBridgeJoinMapTemplate" renamed to "SamsungMdcBridgeJoinMap"
-	/// </example>
-	public class JoinMap : JoinMapBaseAdvanced
+	public class ACMXJoinMap : DmChassisControllerJoinMap
 	{
 		#region Digital
 
 		// TODO [ ] Add digital joins below plugin being developed
-
+		/*
 		[JoinName("IsOnline")]
 		public JoinDataComplete IsOnline = new JoinDataComplete(
 			new JoinData
@@ -31,6 +25,7 @@ namespace PepperDash.Essentials.Plugin
 				JoinCapabilities = eJoinCapabilities.ToSIMPL,
 				JoinType = eJoinType.Digital
 			});
+		*/
 
 		[JoinName("Connect")]
 		public JoinDataComplete Connect = new JoinDataComplete(
@@ -44,7 +39,7 @@ namespace PepperDash.Essentials.Plugin
 				Description = "Connect (Held)/Disconnect (Release) & corresponding feedback",
 				JoinCapabilities = eJoinCapabilities.ToFromSIMPL,
 				JoinType = eJoinType.Digital
-			});		
+			});
 
 		#endregion
 
@@ -62,7 +57,7 @@ namespace PepperDash.Essentials.Plugin
 			},
 			new JoinMetadata
 			{
-				Description = "Socket Status",
+				Description = "Device Comms Status",
 				JoinCapabilities = eJoinCapabilities.ToSIMPL,
 				JoinType = eJoinType.Analog
 			});
@@ -73,7 +68,7 @@ namespace PepperDash.Essentials.Plugin
 		#region Serial
 
 		// TODO [ ] Add serial joins below plugin being developed
-
+		/*
 		public JoinDataComplete DeviceName = new JoinDataComplete(
 			new JoinData
 			{
@@ -86,15 +81,15 @@ namespace PepperDash.Essentials.Plugin
 				JoinCapabilities = eJoinCapabilities.ToSIMPL,
 				JoinType = eJoinType.Serial
 			});
-
+		*/
 		#endregion
 
 		/// <summary>
 		/// Plugin device BridgeJoinMap constructor
 		/// </summary>
 		/// <param name="joinStart">This will be the join it starts on the EISC bridge</param>
-        public JoinMap(uint joinStart)
-            : base(joinStart, typeof(JoinMap))
+		public ACMXJoinMap(uint joinStart)
+			: base(joinStart, typeof(ACMXJoinMap))
 		{
 		}
 	}
