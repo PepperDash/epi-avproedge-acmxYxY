@@ -406,7 +406,6 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                     this.LogDebug($"ProcessVideoRouteFeedback: route feedback {inputSlot.SlotNumber}-{inputSlot.Name} to {outputSlot.SlotNumber}-{outputSlot.Name}");
 
                     (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.Video, inputSlot);
-                    (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.Audio, inputSlot);
 
                     UpdateCurrentRoutes(inputNumber, outputNumber);
 
