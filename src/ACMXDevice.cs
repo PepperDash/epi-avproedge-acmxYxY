@@ -202,13 +202,12 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             InputNames = config.InputNames;
             OutputNames = config.OutputNames;
 
-            InputNames.Add(0, config.NoRouteText);
+            this.LogInformation("SetupSlots: Configured InputNames.Count={0}, OutputNames.Count={1}", InputNames.Count, OutputNames.Count);
 
-            inputCount = (uint)(InputNames.Count >= 0 ? InputNames.Count : 8);
+            inputCount = (uint)(InputNames.Count > 0 ? InputNames.Count : 8);
             outputCount = (uint)(OutputNames.Count > 0 ? OutputNames.Count : 8);
 
-            // AVProEdge doesn't use 0 for clear
-            //SetupInputSlot(0);
+            this.LogInformation("SetupSlots: Using inputCount={0}, outputCount={1}", inputCount, outputCount);
 
             for (uint i = 1; i <= inputCount; i++)
             {
@@ -246,13 +245,6 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             var key = $"hdmi-in{slotNum}";
             var name = InputNames.ContainsKey(slotNum) ? InputNames[slotNum] : $"Input {slotNum}";
             var slot = new InputSlot(key, name, (int)slotNum);
-
-            // AVProEdge doesn't use 0 for clear
-            // if (slotNum == 0)
-            // {
-            //     // set static values
-            //     slot.VideoSyncDetected = true;
-            // }
 
             InputSlots.Add(key, slot);
 
