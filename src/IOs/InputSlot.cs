@@ -12,7 +12,7 @@ namespace PepperDash.Essentials.Plugin.IOs
 
     public int SlotNumber { get; private set; }
 
-    public eRoutingSignalType SupportedSignalTypes => eRoutingSignalType.AudioVideo;
+    public eRoutingSignalType SupportedSignalTypes { get; private set; }
 
     public string Name { get; private set; }
 
@@ -47,6 +47,13 @@ namespace PepperDash.Essentials.Plugin.IOs
       IsOnline = new BoolFeedback("IsOnline", () => true); // Placeholder for actual online status since the input doesn't have it's own status independent of the chasses
       IsOnline.FireUpdate();
       SlotNumber = slotNum;
+      SupportedSignalTypes = eRoutingSignalType.AudioVideo | eRoutingSignalType.SecondaryAudio;
+    }
+
+    public InputSlot(string key, string name, int slotNum, eRoutingSignalType supportedTypes)
+      : this(key, name, slotNum)
+    {
+      SupportedSignalTypes = supportedTypes;
     }
   }
 }
