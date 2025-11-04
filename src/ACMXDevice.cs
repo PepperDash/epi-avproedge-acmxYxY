@@ -207,7 +207,8 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             inputCount = (uint)(InputNames.Count >= 0 ? InputNames.Count : 8);
             outputCount = (uint)(OutputNames.Count > 0 ? OutputNames.Count : 8);
 
-            SetupInputSlot(0);
+            // AVProEdge doesn't use 0 for clear
+            //SetupInputSlot(0);
 
             for (uint i = 1; i <= inputCount; i++)
             {
@@ -246,12 +247,12 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             var name = InputNames.ContainsKey(slotNum) ? InputNames[slotNum] : $"Input {slotNum}";
             var slot = new InputSlot(key, name, (int)slotNum);
 
-            if (slotNum == 0)
-            {
-                // set static values
-                slot.VideoSyncDetected = true;
-            }
-
+            // AVProEdge doesn't use 0 for clear
+            // if (slotNum == 0)
+            // {
+            //     // set static values
+            //     slot.VideoSyncDetected = true;
+            // }
 
             InputSlots.Add(key, slot);
 
