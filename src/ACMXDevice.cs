@@ -788,7 +788,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             }
             catch (Exception ex)
             {
-                this.LogError("ExecuteSwitch: {inputNum} to {outputNum} exception {message}", inputSelector, outputSelector, ex.Message);
+                this.LogError("ExecuteSwitch: in-{inputNum} to out-{outputNum} exception {message}", inputSelector, outputSelector, ex.Message);
                 this.LogDebug(ex, "ExecuteSwitch: Exception StackTrace");
                 return;
             }
@@ -808,14 +808,25 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             this.LogDebug("UpdateCurrentRoutes: Found existing descriptor: {0}", descriptor != null ? "Yes" : "No");
 
             var inputPort = GetRoutingInputPortForSelector(inputSelector);
-
             var outputPort = GetRoutingOutputPortForSelector(outputSelector);
 
-            this.LogDebug("UpdateCurrentRoutes: Updating route for inputNum {inputNum} to outputNum {outputNum}", this, outputSelector, inputSelector);
+            if (inputPort is null)
+            {
+                this.LogDebug("UpdateCurrentRoutes: Unable to find port for in-{inputNum}", inputSelector);
+                return;
+            }
 
             if (outputPort is null)
             {
-                this.LogDebug("UpdateCurrentRoutes: Unable to find port for {outputNum}", this, outputSelector);
+                this.LogDebug("UpdateCurrentRoutes: Unable to find port for out-{outputNum}", outputSelector);
+                return;
+            }
+
+            this.LogDebug("UpdateCurrentRoutes: Updating route in-{inputNum} to out-{outputNum}", inputSelector, outputSelector);
+
+            if (outputPort is null)
+            {
+                this.LogDebug("UpdateCurrentRoutes: Unable to find port for out-{outputNum}", outputSelector);
                 return;
             }
 
