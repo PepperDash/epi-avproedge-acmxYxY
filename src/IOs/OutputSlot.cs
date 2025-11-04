@@ -15,7 +15,8 @@ namespace PepperDash.Essentials.Plugin.IOs
     {
       { eRoutingSignalType.AudioVideo, default },
       { eRoutingSignalType.Audio, default },
-      { eRoutingSignalType.Video, default }
+      { eRoutingSignalType.Video, default },
+      { eRoutingSignalType.SecondaryAudio, default }
     };
 
     public Dictionary<eRoutingSignalType, IRoutingInputSlot> CurrentRoutes => currentRoutes;
@@ -35,6 +36,13 @@ namespace PepperDash.Essentials.Plugin.IOs
       this.key = key;
       Name = name;
       SlotNumber = slotNum;
+      SupportedSignalTypes = eRoutingSignalType.AudioVideo | eRoutingSignalType.SecondaryAudio;
+    }
+
+    public OutputSlot(string key, string name, int slotNum, eRoutingSignalType supportedTypes)
+      : this(key, name, slotNum)
+    {
+      SupportedSignalTypes = supportedTypes;
     }
 
     public void SetInputRoute(eRoutingSignalType type, IRoutingInputSlot input)
