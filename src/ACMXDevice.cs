@@ -242,7 +242,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
         private void SetupInputSlot(uint slotNum)
         {
-            var key = $"hdmi-in{slotNum}";
+            var key = $"input{slotNum}";
             var name = InputNames.ContainsKey(slotNum) ? InputNames[slotNum] : $"Input {slotNum}";
             var slot = new InputSlot(key, name, (int)slotNum);
 
@@ -253,20 +253,6 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 key,
                 eRoutingSignalType.AudioVideo,
                 eRoutingPortConnectionType.Hdmi,
-                slotNum,
-                this,
-                true)
-              {
-                  FeedbackMatchObject = key,
-              });
-
-
-            key = $"audio-in{slotNum}";
-            InputPorts.Add(
-              new RoutingInputPort(
-                key,
-                eRoutingSignalType.Audio | eRoutingSignalType.SecondaryAudio,
-                eRoutingPortConnectionType.LineAudio,
                 slotNum,
                 this,
                 true)
@@ -285,7 +271,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         {
             if (slotNum == 0) return;
 
-            var key = $"hdmi-out{slotNum}";
+            var key = $"output{slotNum}";
             var name = OutputNames.ContainsKey(slotNum) ? OutputNames[slotNum] : $"Output {slotNum}";
             var slot = new OutputSlot(key, name, (int)slotNum);
 
@@ -296,17 +282,6 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 key,
                 eRoutingSignalType.AudioVideo,
                 eRoutingPortConnectionType.Hdmi,
-                slotNum,
-                this,
-                true));
-
-
-            key = $"audio-out{slotNum}";
-            OutputPorts.Add(
-              new RoutingOutputPort(
-                key,
-                eRoutingSignalType.Audio | eRoutingSignalType.SecondaryAudio,
-                eRoutingPortConnectionType.LineAudio,
                 slotNum,
                 this,
                 true));
@@ -765,11 +740,6 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 {
                     SetAudioRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
                 }
-
-                if (type.HasFlag(eRoutingSignalType.SecondaryAudio))
-                {
-                    SetAudioRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
-                }
             }
             catch (Exception ex)
             {
@@ -810,12 +780,6 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 }
                 // route audio
                 if (signalType.HasFlag(eRoutingSignalType.Audio))
-                {
-                    SetAudioRoute(inputNum, outputNum);
-                    UpdateCurrentRoutes(inputNum, outputNum);
-                }
-                // route secondary audio
-                if (signalType.HasFlag(eRoutingSignalType.SecondaryAudio))
                 {
                     SetAudioRoute(inputNum, outputNum);
                     UpdateCurrentRoutes(inputNum, outputNum);
