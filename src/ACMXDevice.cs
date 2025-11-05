@@ -738,7 +738,6 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 if (type.HasFlag(eRoutingSignalType.AudioVideo))
                 {
                     SetVideoRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
-                    SetAudioRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
                     return;
                 }
                 // route video (hdmi video only)
@@ -749,7 +748,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 // route audio (hdmi embedded audio)
                 if (type.HasFlag(eRoutingSignalType.Audio))
                 {
-                    SetAudioRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
+                    SetVideoRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
                 }
                 // route secondary audio (extracted audio)
                 if (type.HasFlag(eRoutingSignalType.SecondaryAudio))
@@ -843,17 +842,17 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
             this.LogDebug("UpdateCurrentRoutes: Updating route in-{inputNum} to out-{outputNum}", inputSelector, outputSelector);
 
-            // if (inputPort.Type != signalType)
-            // {
-            //     this.LogWarning($"UpdateCurrentRoutes: Input port type {inputPort.Type} does not match signal type {signalType}");
-            //     return;
-            // }
+            if (inputPort.Type != signalType)
+            {
+                this.LogWarning($"UpdateCurrentRoutes: Input port type {inputPort.Type} does not match signal type {signalType}");
+                return;
+            }
 
-            // if (outputPort.Type != signalType)
-            // {
-            //     this.LogWarning($"UpdateCurrentRoutes: Output port type {outputPort.Type} does not match signal type {signalType}");
-            //     return;
-            // }
+            if (outputPort.Type != signalType)
+            {
+                this.LogWarning($"UpdateCurrentRoutes: Output port type {outputPort.Type} does not match signal type {signalType}");
+                return;
+            }
 
             if (descriptor is null)
             {
