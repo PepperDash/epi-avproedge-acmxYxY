@@ -346,7 +346,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             }
 
             // Log unhandled messages for debugging
-            this.LogDebug("ProcessFeedbackMessage: Unhandled message '{0}'", message);
+            this.LogDebug("ProcessFeedbackMessage: Unhandled message '{0}'", message.Replace("\r", "[CR]").Replace("\n", "[LF]"));
         }
 
         private void ProcessVideoRouteFeedback(string message)
