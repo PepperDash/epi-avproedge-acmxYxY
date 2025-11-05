@@ -824,13 +824,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
             this.LogDebug("UpdateCurrentRoutes: Updating route in-{inputNum} to out-{outputNum}", inputSelector, outputSelector);
 
-            if (outputPort is null)
-            {
-                this.LogDebug("UpdateCurrentRoutes: Unable to find port for out-{outputNum}", outputSelector);
-                return;
-            }
-
-            if (descriptor is null && outputPort is not null)
+            if (descriptor is null)
             {
                 descriptor = new(outputPort, inputPort);
 
