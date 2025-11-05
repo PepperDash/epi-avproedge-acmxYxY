@@ -23,7 +23,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
     public class ACMXDevice : EssentialsBridgeableDevice, IMatrixRouting, IRoutingWithFeedback, ICommunicationMonitor, IDeviceInfoProvider
     {
         private const string commsDelimiter = "\r";
-        private const string gatherDelimiter = "\n";
+        private const string gatherDelimiter = "\r\n";
         private uint inputCount = 8;
         private uint outputCount = 8;
 
@@ -254,7 +254,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 portKey,
                 eRoutingSignalType.Video | eRoutingSignalType.Audio | eRoutingSignalType.AudioVideo | eRoutingSignalType.SecondaryAudio,
                 eRoutingPortConnectionType.Hdmi,
-                slotNum,
+                portKey,
                 this,
                 true)
               {
@@ -286,7 +286,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 videoKey,
                 eRoutingSignalType.Video | eRoutingSignalType.Audio | eRoutingSignalType.AudioVideo,
                 eRoutingPortConnectionType.Hdmi,
-                slotNum,
+                videoKey,
                 this,
                 true));
 
@@ -297,7 +297,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 audioKey,
                 eRoutingSignalType.SecondaryAudio,
                 eRoutingPortConnectionType.LineAudio,
-                slotNum,
+                audioKey,
                 this,
                 true));
 
@@ -391,7 +391,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
                     (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.AudioVideo, inputSlot);
 
-                    UpdateCurrentRoutes(inputNumber, outputNumber, eRoutingSignalType.AudioVideo);
+                    UpdateCurrentRoutes(inputNumber, outputNumber);
 
                 }
                 else if (outputSlot == null)
@@ -430,7 +430,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
                     (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.SecondaryAudio, inputSlot);
 
-                    UpdateCurrentRoutes(inputNumber, outputNumber, eRoutingSignalType.SecondaryAudio);
+                    UpdateCurrentRoutes(inputNumber, outputNumber);
 
                 }
                 else if (outputSlot == null)
@@ -783,26 +783,26 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 if (signalType.HasFlag(eRoutingSignalType.AudioVideo))
                 {
                     SetVideoRoute(inputNum, outputNum);
-                    UpdateCurrentRoutes(inputNum, outputNum, signalType);
+                    UpdateCurrentRoutes(inputNum, outputNum);
                     return;
                 }
                 // route video (hdmi video only)
                 if (signalType.HasFlag(eRoutingSignalType.Video))
                 {
                     SetVideoRoute(inputNum, outputNum);
-                    UpdateCurrentRoutes(inputNum, outputNum, signalType);
+                    UpdateCurrentRoutes(inputNum, outputNum);
                 }
                 // route audio (hdmi embedded audio)
                 if (signalType.HasFlag(eRoutingSignalType.Audio))
                 {
                     SetVideoRoute(inputNum, outputNum);
-                    UpdateCurrentRoutes(inputNum, outputNum, signalType);
+                    UpdateCurrentRoutes(inputNum, outputNum);
                 }
                 // route secondary audio (extracted audio)
                 if (signalType.HasFlag(eRoutingSignalType.SecondaryAudio))
                 {
                     SetAudioRoute(inputNum, outputNum);
-                    UpdateCurrentRoutes(inputNum, outputNum, signalType);
+                    UpdateCurrentRoutes(inputNum, outputNum);
                 }
             }
             catch (Exception ex)
@@ -818,7 +818,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         /// </summary>
         /// <param name="inputSelector"></param>
         /// <param name="outputSelector"></param>
-        private void UpdateCurrentRoutes(uint inputSelector, uint outputSelector, eRoutingSignalType signalType)
+        private void UpdateCurrentRoutes(uint inputSelector, uint outputSelector)
         {
             RouteSwitchDescriptor descriptor;
 
@@ -841,18 +841,6 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             }
 
             this.LogDebug("UpdateCurrentRoutes: Updating route in-{inputNum} to out-{outputNum}", inputSelector, outputSelector);
-
-            if (inputPort.Type != signalType)
-            {
-                this.LogWarning($"UpdateCurrentRoutes: Input port type {inputPort.Type} does not match signal type {signalType}");
-                return;
-            }
-
-            if (outputPort.Type != signalType)
-            {
-                this.LogWarning($"UpdateCurrentRoutes: Output port type {outputPort.Type} does not match signal type {signalType}");
-                return;
-            }
 
             if (descriptor is null)
             {
@@ -880,20 +868,14 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             this.LogDebug($"GetRouteDescriptorByOutputPort: Looking for route descriptor with out{selector} | type {outputPort?.Type}");
             return CurrentRoutes.FirstOrDefault(rd =>
             {
-                this.LogDebug($"GetRouteDescriptorByOutputPort: Checking descriptor with outputNum port selector {rd.OutputPort.Selector}");
+                //this.LogDebug($"GetRouteDescriptorByOutputPort: Checking descriptor with outputNum port selector {rd.OutputPort.Selector}");
                 if (rd.OutputPort.Selector is not uint opSelector)
                 {
                     this.LogDebug("GetRouteDescriptorByOutputPort: Output port selector is not a uint");
                     return false;
                 }
 
-                // if (rd.OutputPort.Type != outputPort.Type)
-                // {
-                //     this.LogDebug($"GetRouteDescriptorByOutputPort: Output port type mismatch {rd.OutputPort.Type} != {outputPort.Type}");
-                //     return false;
-                // }
-
-                this.LogDebug($"GetRouteDescriptorByOutputPort: Comparing {opSelector} to {selector}");
+                //this.LogDebug($"GetRouteDescriptorByOutputPort: Comparing {opSelector} to {selector}");
                 return opSelector == selector;
             });
         }
@@ -906,7 +888,6 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         private RoutingInputPort GetRoutingInputPortForSelector(uint selector)
         {
             this.LogDebug("GetRoutingInputPortForSelector: Looking for inputNum port with selector {0}", selector);
-
             return InputPorts.FirstOrDefault(ip =>
             {
                 //this.LogDebug("GetRoutingInputPortForSelector: Checking inputNum port with selector {0}", ip.Selector);
