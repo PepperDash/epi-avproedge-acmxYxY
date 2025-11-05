@@ -242,14 +242,14 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         {
             var name = InputNames.ContainsKey(slotNum) ? InputNames[slotNum] : $"Input {slotNum}";
             var key = $"in{slotNum}";
-            var slot = new InputSlot(key, name, (int)slotNum, eRoutingSignalType.AudioVideo | eRoutingSignalType.SecondaryAudio);
+            var slot = new InputSlot(key, name, (int)slotNum);
 
             InputSlots.Add(key, slot);
 
             InputPorts.Add(
               new RoutingInputPort(
                 key,
-                slot.SupportedSignalTypes,
+                eRoutingSignalType.Video | eRoutingSignalType.Audio | eRoutingSignalType.AudioVideo | eRoutingSignalType.SecondaryAudio,
                 eRoutingPortConnectionType.Hdmi,
                 slotNum,
                 this,
@@ -271,14 +271,14 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
             var name = OutputNames.ContainsKey(slotNum) ? OutputNames[slotNum] : $"Output {slotNum}";
             var key = $"out{slotNum}";
-            var slot = new OutputSlot(key, name, (int)slotNum, eRoutingSignalType.AudioVideo | eRoutingSignalType.SecondaryAudio);
+            var slot = new OutputSlot(key, name, (int)slotNum);
 
             OutputSlots.Add(key, slot);
 
             OutputPorts.Add(
               new RoutingOutputPort(
                 key,
-                slot.SupportedSignalTypes,
+                eRoutingSignalType.Video | eRoutingSignalType.Audio | eRoutingSignalType.AudioVideo | eRoutingSignalType.SecondaryAudio,
                 eRoutingPortConnectionType.Hdmi,
                 slotNum,
                 this,
