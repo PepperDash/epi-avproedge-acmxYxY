@@ -23,7 +23,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
     public class ACMXDevice : EssentialsBridgeableDevice, IMatrixRouting, IRoutingWithFeedback, ICommunicationMonitor, IDeviceInfoProvider
     {
         private const string commsDelimiter = "\r";
-        private const string gatherDelimiter = "\r";
+        private const string gatherDelimiter = "\n";
         private uint inputCount = 8;
         private uint outputCount = 8;
 
@@ -321,6 +321,8 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         /// <param name="message"></param>
         private void ProcessFeedbackMessage(string message)
         {
+            this.LogDebug("ProcessFeedbackMessage: '{0}'", message.Replace("\r", "[CR]").Replace("\n", "[LF]"));
+
             if (message.Contains("VS IN"))
             {
                 ProcessVideoRouteFeedback(message);
