@@ -372,7 +372,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
                     (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.AudioVideo, inputSlot);
 
-                    UpdateCurrentRoutes(inputNumber, outputNumber);
+                    UpdateCurrentRoutes(inputNumber, outputNumber, eRoutingSignalType.AudioVideo);
 
                 }
                 else if (outputSlot == null)
@@ -411,7 +411,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
                     (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.SecondaryAudio, inputSlot);
 
-                    UpdateCurrentRoutes(inputNumber, outputNumber);
+                    UpdateCurrentRoutes(inputNumber, outputNumber, eRoutingSignalType.SecondaryAudio);
 
                 }
                 else if (outputSlot == null)
@@ -764,26 +764,26 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 if (signalType.HasFlag(eRoutingSignalType.AudioVideo))
                 {
                     SetVideoRoute(inputNum, outputNum);
-                    UpdateCurrentRoutes(inputNum, outputNum);
+                    UpdateCurrentRoutes(inputNum, outputNum, signalType);
                     return;
                 }
                 // route video (hdmi video only)
                 if (signalType.HasFlag(eRoutingSignalType.Video))
                 {
                     SetVideoRoute(inputNum, outputNum);
-                    UpdateCurrentRoutes(inputNum, outputNum);
+                    UpdateCurrentRoutes(inputNum, outputNum, signalType);
                 }
                 // route audio (hdmi embedded audio)
                 if (signalType.HasFlag(eRoutingSignalType.Audio))
                 {
                     SetVideoRoute(inputNum, outputNum);
-                    UpdateCurrentRoutes(inputNum, outputNum);
+                    UpdateCurrentRoutes(inputNum, outputNum, signalType);
                 }
                 // route secondary audio (extracted audio)
                 if (signalType.HasFlag(eRoutingSignalType.SecondaryAudio))
                 {
                     SetAudioRoute(inputNum, outputNum);
-                    UpdateCurrentRoutes(inputNum, outputNum);
+                    UpdateCurrentRoutes(inputNum, outputNum, signalType);
                 }
             }
             catch (Exception ex)
@@ -800,12 +800,12 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         /// </summary>
         /// <param name="inputSelector"></param>
         /// <param name="outputSelector"></param>
-        private void UpdateCurrentRoutes(uint inputSelector, uint outputSelector)
+        private void UpdateCurrentRoutes(uint inputSelector, uint outputSelector, eRoutingSignalType signalType)
         {
             RouteSwitchDescriptor descriptor;
 
             descriptor = GetRouteDescriptorByOutputPort(outputSelector);
-            this.LogDebug("UpdateCurrentRoutes: Found existing descriptor: {0}", descriptor != null ? "Yes" : "No");
+            this.LogDebug($"UpdateCurrentRoutes: Found existing descriptor: {(descriptor != null ? "Yes" : "No")}");
 
             var inputPort = GetRoutingInputPortForSelector(inputSelector);
             var outputPort = GetRoutingOutputPortForSelector(outputSelector);
@@ -823,6 +823,18 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             }
 
             this.LogDebug("UpdateCurrentRoutes: Updating route in-{inputNum} to out-{outputNum}", inputSelector, outputSelector);
+
+            if (inputPort.Type != signalType)
+            {
+                this.LogWarning($"UpdateCurrentRoutes: Input port type {inputPort.Type} does not match signal type {signalType}");
+                return;
+            }
+
+            if (outputPort.Type != signalType)
+            {
+                this.LogWarning($"UpdateCurrentRoutes: Output port type {outputPort.Type} does not match signal type {signalType}");
+                return;
+            }
 
             if (descriptor is null)
             {
@@ -845,17 +857,25 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         /// <returns></returns>
         private RouteSwitchDescriptor GetRouteDescriptorByOutputPort(uint selector)
         {
-            this.LogDebug("GetRouteDescriptorByOutputPort: Looking for route descriptor with outputNum port selector {0}", selector);
+            var outputPort = GetRoutingOutputPortForSelector(selector);
+
+            this.LogDebug($"GetRouteDescriptorByOutputPort: Looking for route descriptor with outputNum port selector {selector}");
             return CurrentRoutes.FirstOrDefault(rd =>
             {
-                this.LogDebug("GetRouteDescriptorByOutputPort: Checking descriptor with outputNum port selector {0}", rd.OutputPort.Selector);
+                this.LogDebug($"GetRouteDescriptorByOutputPort: Checking descriptor with outputNum port selector {rd.OutputPort.Selector}");
                 if (rd.OutputPort.Selector is not uint opSelector)
                 {
                     this.LogDebug("GetRouteDescriptorByOutputPort: Output port selector is not a uint");
                     return false;
                 }
 
-                this.LogDebug("GetRouteDescriptorByOutputPort: Comparing {0} to {1}", opSelector, selector);
+                if (rd.OutputPort.Type != outputPort.Type)
+                {
+                    this.LogDebug($"GetRouteDescriptorByOutputPort: Output port type mismatch {rd.OutputPort.Type} != {outputPort.Type}");
+                    return false;
+                }
+
+                this.LogDebug($"GetRouteDescriptorByOutputPort: Comparing {opSelector} to {selector}");
                 return opSelector == selector;
             });
         }
