@@ -859,7 +859,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         {
             var outputPort = GetRoutingOutputPortForSelector(selector);
 
-            this.LogDebug($"GetRouteDescriptorByOutputPort: Looking for route descriptor with outputNum port selector {selector}");
+            this.LogDebug($"GetRouteDescriptorByOutputPort: Looking for route descriptor with out{selector} | type {outputPort?.Type}");
             return CurrentRoutes.FirstOrDefault(rd =>
             {
                 this.LogDebug($"GetRouteDescriptorByOutputPort: Checking descriptor with outputNum port selector {rd.OutputPort.Selector}");
