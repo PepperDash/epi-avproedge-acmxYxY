@@ -361,14 +361,14 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 var outputNumber = uint.Parse(switchMatch.Groups[1].Value);
                 var inputNumber = uint.Parse(switchMatch.Groups[2].Value);
 
-                this.LogDebug($"ProcessVideoRouteFeedback: Switch response Input-{inputNumber} to Output-{outputNumber}");
+                this.LogVerbose($"ProcessVideoRouteFeedback: Switch response Input-{inputNumber} to Output-{outputNumber}");
 
                 var outputSlot = OutputSlots.FirstOrDefault(x => x.Value.SlotNumber == outputNumber).Value;
                 var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value;
 
                 if (outputSlot != null && inputSlot != null)
                 {
-                    this.LogDebug($"ProcessVideoRouteFeedback: route feedback {inputSlot.SlotNumber}-{inputSlot.Name} to {outputSlot.SlotNumber}-{outputSlot.Name}");
+                    this.LogVerbose($"ProcessVideoRouteFeedback: route feedback {inputSlot.SlotNumber}-{inputSlot.Name} to {outputSlot.SlotNumber}-{outputSlot.Name}");
 
                     (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.AudioVideo, inputSlot);
 
@@ -400,14 +400,14 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 var outputNumber = uint.Parse(switchMatch.Groups[1].Value);
                 var inputNumber = uint.Parse(switchMatch.Groups[2].Value);
 
-                this.LogDebug($"ProcessAudioRouteFeedback: Switch response Input-{inputNumber} to Output-{outputNumber}");
+                this.LogVerbose($"ProcessAudioRouteFeedback: Switch response Input-{inputNumber} to Output-{outputNumber}");
 
                 var outputSlot = OutputSlots.FirstOrDefault(x => x.Value.SlotNumber == outputNumber).Value;
                 var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value;
 
                 if (outputSlot != null && inputSlot != null)
                 {
-                    this.LogDebug($"ProcessAudioRouteFeedback: route feedback {inputSlot.SlotNumber}-{inputSlot.Name} to {outputSlot.SlotNumber}-{outputSlot.Name}");
+                    this.LogVerbose($"ProcessAudioRouteFeedback: route feedback {inputSlot.SlotNumber}-{inputSlot.Name} to {outputSlot.SlotNumber}-{outputSlot.Name}");
 
                     (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.SecondaryAudio, inputSlot);
 
@@ -440,7 +440,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 var slotNumber = uint.Parse(signalMatch.Groups[2].Value);
                 var status = int.Parse(signalMatch.Groups[3].Value);
 
-                this.LogDebug($"ProcessSignalStatusFeedback: Signal status {direction}-{slotNumber} is {status}");
+                //this.LogVerbose($"ProcessSignalStatusFeedback: Signal status {direction}-{slotNumber} is {status}");
 
                 // Update the signal status for the corresponding slot
                 if (direction.Equals("IN", StringComparison.OrdinalIgnoreCase))
@@ -891,14 +891,14 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
             return InputPorts.FirstOrDefault(ip =>
             {
-                this.LogDebug("GetRoutingInputPortForSelector: Checking inputNum port with selector {0}", ip.Selector);
+                //this.LogDebug("GetRoutingInputPortForSelector: Checking inputNum port with selector {0}", ip.Selector);
                 if (ip.Selector is not uint ipSelector)
                 {
                     this.LogDebug("GetRoutingInputPortForSelector: Input port selector is not a uint");
                     return false;
                 }
 
-                this.LogDebug("GetRoutingInputPortForSelector: Comparing {0} to {1}", ipSelector, selector);
+                //this.LogDebug("GetRoutingInputPortForSelector: Comparing {0} to {1}", ipSelector, selector);
                 return ipSelector == selector;
             });
         }
@@ -911,14 +911,16 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         /// <returns></returns>
         private RoutingOutputPort GetRoutingOutputPortForSelector(uint selector)
         {
-
+            //this.LogDebug("GetRoutingOutputPortForSelector: Looking for outputNum port with selector {0}", selector);
             return OutputPorts.FirstOrDefault(op =>
             {
                 if (op.Selector is not uint opSelector)
                 {
+                    this.LogDebug("GetRoutingOutputPortForSelector: Output port selector is not a uint");
                     return false;
                 }
 
+                //this.LogDebug("GetRoutingOutputPortForSelector: Comparing {0} to {1}", opSelector, selector);
                 return opSelector == selector;
             });
         }
