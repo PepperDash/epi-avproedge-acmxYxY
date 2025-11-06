@@ -211,6 +211,8 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
             this.LogInformation("SetupSlots: Using inputCount={0}, outputCount={1}", inputCount, outputCount);
 
+            SetupInputSlot(0); // no route input
+
             for (uint i = 1; i <= inputCount; i++)
             {
                 SetupInputSlot(i);
@@ -244,7 +246,9 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
         private void SetupInputSlot(uint slotNum)
         {
-            var name = InputNames.ContainsKey(slotNum) ? InputNames[slotNum] : $"Input {slotNum}";
+            string? name = slotNum == 0
+                ? config.NoRouteText
+                : InputNames.ContainsKey(slotNum) ? InputNames[slotNum] : $"Input {slotNum}";
 
             // add input slot to support IMatrixRouting
             var slotKey = $"in{slotNum}";
@@ -356,6 +360,12 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 return;
             }
 
+            if (message.Contains("STREAM"))
+            {
+                // Process stream status feedback if needed
+                return;
+            }
+
             if (message.Contains("SIG STA"))
             {
                 ProcessSignalStatusFeedback(message);
@@ -449,6 +459,46 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 return;
             }
         }
+
+
+        private void ProcessOutputStreamState(string message)
+        {
+            // SET OUT[x] STREAM [ON|OFF]
+            var streamResponseRegex = new System.Text.RegularExpressions.Regex(@"SET\s+OUT(0?\d|[1-9]\d)\s+STREAM\s+(ON|OFF)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var streamMatch = streamResponseRegex.Match(message);
+
+            if (streamMatch.Success)
+            {
+                var outputNumber = uint.Parse(streamMatch.Groups[1].Value);
+                var state = streamMatch.Groups[2].Value.ToUpper();
+
+                this.LogVerbose($"ProcessOutputStreamState: Output {outputNumber} stream is {state}");
+
+                if (OutputSlots.FirstOrDefault(o => o.Value.SlotNumber == outputNumber).Value is not OutputSlot outputSlot)
+                {
+                    this.LogError("ProcessOutputStreamState: Could not find outputslot.SlotNumber {0} for stream state update", outputNumber);
+                    return;
+                }
+
+                // Update the stream state for the corresponding output slot if needed
+                switch (state.ToLower())
+                {
+                    case "on":
+                        {
+                            // Set stream state to ON
+                            //outputSlot.
+                            break;
+                        }
+                    case "off":
+                        {
+                            // Set stream state to OFF
+                            //outputSlot.
+                            break;
+                        }
+                }
+            }
+        }
+
 
         private void ProcessSignalStatusFeedback(string message)
         {
