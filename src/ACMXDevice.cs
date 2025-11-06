@@ -246,9 +246,15 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
         private void SetupInputSlot(uint slotNum)
         {
-            string? name = slotNum == 0
-                ? config.NoRouteText
-                : InputNames.ContainsKey(slotNum) ? InputNames[slotNum] : $"Input {slotNum}";
+            string name;
+            if (slotNum == 0)
+            {
+                name = config.NoRouteText ?? $"Input {slotNum}";
+            }
+            else
+            {
+                name = InputNames.TryGetValue(slotNum, out string value) ? value ?? $"Input {slotNum}" : $"Input {slotNum}";
+            }
 
             // add input slot to support IMatrixRouting
             var slotKey = $"in{slotNum}";
@@ -360,9 +366,15 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 return;
             }
 
-            if (message.Contains("STREAM"))
+            if (message.Contains(" STREAM "))
             {
-                // Process stream status feedback if needed
+                ProcessExtractedAudioEnableState(message);
+                return;
+            }
+
+            if (message.Contains(" EXA "))
+            {
+                ProcessOutputStreamState(message);
                 return;
             }
 
@@ -463,7 +475,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
         private void ProcessOutputStreamState(string message)
         {
-            // SET OUT[x] STREAM [ON|OFF]
+            // OUT[x] STREAM [ON|OFF]
             var streamResponseRegex = new System.Text.RegularExpressions.Regex(@"SET\s+OUT(0?\d|[1-9]\d)\s+STREAM\s+(ON|OFF)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             var streamMatch = streamResponseRegex.Match(message);
 
@@ -474,11 +486,17 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
                 this.LogVerbose($"ProcessOutputStreamState: Output {outputNumber} stream is {state}");
 
-                if (OutputSlots.FirstOrDefault(o => o.Value.SlotNumber == outputNumber).Value is not OutputSlot outputSlot)
+                var outputSlot = OutputSlots.FirstOrDefault(o => o.Value.SlotNumber == outputNumber).Value;
+
+                if (outputSlot is not OutputSlot)
                 {
                     this.LogError("ProcessOutputStreamState: Could not find outputslot.SlotNumber {0} for stream state update", outputNumber);
                     return;
                 }
+
+                var inputNumber = outputSlot.CurrentRoutes[eRoutingSignalType.AudioVideo].SlotNumber;
+
+                this.LogVerbose($"ProcessOutputStreamState: Output {outputNumber} stream is {state} with input {inputNumber} routed");
 
                 // Update the stream state for the corresponding output slot if needed
                 switch (state.ToLower())
@@ -486,13 +504,57 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                     case "on":
                         {
                             // Set stream state to ON
-                            //outputSlot.
+                            UpdateCurrentRoutes((uint)inputNumber, outputNumber, eRoutingSignalType.AudioVideo);
                             break;
                         }
                     case "off":
                         {
                             // Set stream state to OFF
-                            //outputSlot.
+                            UpdateCurrentRoutes(0, outputNumber, eRoutingSignalType.AudioVideo);
+                            break;
+                        }
+                }
+            }
+        }
+
+
+        private void ProcessExtractedAudioEnableState(string message)
+        {
+            // OUT[x] EXA [EN|DIS]
+            var exaResponseRegex = new System.Text.RegularExpressions.Regex(@"OUT(0?\d|[1-9]\d)\s+EXA\s+(EN|DIS)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var exaMatch = exaResponseRegex.Match(message);
+
+            if (exaMatch.Success)
+            {
+                var outputNumber = uint.Parse(exaMatch.Groups[1].Value);
+                var state = exaMatch.Groups[2].Value.ToUpper();
+
+                this.LogVerbose($"ProcessExtractedAudioEnableState: Output {outputNumber} EXA is {state}");
+
+                var outputSlot = OutputSlots.FirstOrDefault(o => o.Value.SlotNumber == outputNumber).Value;
+
+                if (outputSlot is not OutputSlot)
+                {
+                    this.LogError("ProcessExtractedAudioEnableState: Could not find outputslot.SlotNumber {0} for EXA state update", outputNumber);
+                    return;
+                }
+
+                var inputNumber = outputSlot.CurrentRoutes[eRoutingSignalType.SecondaryAudio].SlotNumber;
+
+                this.LogVerbose($"ProcessExtractedAudioEnableState: Output {outputNumber} extracted audio is {(state == "EN" ? "enabled" : "disabled")} with input {inputNumber} routed");
+
+                switch (state.ToLower())
+                {
+                    case "en":
+                        {
+                            // Enable extracted audio
+                            UpdateCurrentRoutes((uint)inputNumber, outputNumber, eRoutingSignalType.SecondaryAudio);
+                            break;
+                        }
+                    case "dis":
+                        {
+                            // Disable extracted audio
+                            UpdateCurrentRoutes(0, outputNumber, eRoutingSignalType.SecondaryAudio);
                             break;
                         }
                 }
@@ -578,11 +640,18 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         /// </remarks>
         public async void Poll()
         {
-            SendText("GET STA");
+            PollSystemStatus();
 
             await Task.Delay(500);
 
             PollSignalStatus();
+
+
+        }
+
+        public async void PollSystemStatus()
+        {
+            SendText("GET STA");
         }
 
         /// <summary>
@@ -607,6 +676,19 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             await Task.Delay(500);
 
             SendText("GET OUT0 SIG STA");
+        }
+
+        public async void PollStreamState()
+        {
+            // get stream state
+            SendText("GET OUT0 STREAM");
+        }
+
+
+        public async void PollExtractedAudioState()
+        {
+            // get extracted audio state
+            SendText("GET OUT0 EXA");
         }
 
 
@@ -988,11 +1070,26 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
         private void SetVideoRoute(int input, int output)
         {
+            if (input == 0)
+            {
+                SendText($"SET OUT{output} STREAM OFF");
+                return;
+            }
+
+
+            SendText($"SET OUT{output} STREAM ON");
             SendText($"SET OUT{output} VS IN{input}");
         }
 
         private void SetAudioRoute(int input, int output)
         {
+            if (input == 0)
+            {
+                SendText($"SET OUT{output} EXA DIS");
+                return;
+            }
+
+            SendText($"SET OUT{output} EXA EN");
             SendText($"SET OUT{output} AS IN{input}");
         }
 
