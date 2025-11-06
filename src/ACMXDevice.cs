@@ -713,7 +713,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         }
 
         /// <summary>
-        /// Routes an inputNum to an outputNum for the specified signal type(s)
+        /// Tech Matrix Routing using IMatrixRouting supports routing an input to an output using the specified signal type(s)
         /// </summary>
         /// <param name="inputSlotKey"></param>
         /// <param name="outputSlotKey"></param>
@@ -742,6 +742,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 if (type.HasFlag(eRoutingSignalType.AudioVideo))
                 {
                     SetVideoRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
+                    SetAudioRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
                     return;
                 }
                 // route video (hdmi video only)
@@ -749,10 +750,13 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 {
                     SetVideoRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
                 }
-                // route audio (hdmi embedded audio)
+                // route secondary audio (extracted audio)
+                // - hdmi carries embedded audio, it cannot be routed separately
+                // - we must route secondaryAudio to getting breakaway audio routing from the extracted audio output
+                // - this does not apply to ExecuteSwitch (Essentials Magic Routing) since it handles the logic differently
                 if (type.HasFlag(eRoutingSignalType.Audio))
                 {
-                    SetVideoRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
+                    SetAudioRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
                 }
                 // route secondary audio (extracted audio)
                 if (type.HasFlag(eRoutingSignalType.SecondaryAudio))
