@@ -12,7 +12,7 @@ namespace PepperDash.Essentials.Plugin.IOs
 
     public int SlotNumber { get; private set; }
 
-    public eRoutingSignalType SupportedSignalTypes => eRoutingSignalType.AudioVideo;
+    public eRoutingSignalType SupportedSignalTypes => eRoutingSignalType.Video | eRoutingSignalType.Audio | eRoutingSignalType.AudioVideo | eRoutingSignalType.SecondaryAudio;
 
     public string Name { get; private set; }
 

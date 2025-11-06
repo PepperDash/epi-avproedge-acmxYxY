@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Crestron.SimplSharpPro.DeviceSupport;
@@ -15,7 +14,6 @@ using PepperDash.Essentials.Core.DeviceInfo;
 using PepperDash.Essentials.Core.Queues;
 using PepperDash.Essentials.Core.Routing;
 using PepperDash.Essentials.Plugin.IOs;
-using static Crestron.SimplSharpPro.DM.Audio;
 
 namespace PepperDash.Essentials.Plugin.AVProEdge
 {
@@ -25,9 +23,13 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
     public class ACMXDevice : EssentialsBridgeableDevice, IMatrixRouting, IRoutingWithFeedback, ICommunicationMonitor, IDeviceInfoProvider
     {
         private const string commsDelimiter = "\r";
-        private const string gatherDelimiter = "\r";
+        private const string gatherDelimiter = "\r\n";
         private uint inputCount = 8;
         private uint outputCount = 8;
+
+        private const string videoInPrefix = "hdmi-in";
+        private const string videoOutPrefix = "hdmi-out";
+        private const string audioOutPrefix = "audio-out";
 
         /// <summary>
         /// It is often desirable to store the config
@@ -231,33 +233,36 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
             foreach (var item in InputPorts)
             {
-                this.LogInformation($"SetupSlots: InputPorts Key={item.Key}, Port={item.Port}, Type={item.Type}, Selector={item.Selector}, ConnectionType={item.ConnectionType}, Parent={item.ParentDevice}");
+                this.LogInformation($"SetupSlots: InputPorts {item.ToString()}");
             }
 
             foreach (var item in OutputPorts)
             {
-                this.LogInformation($"SetupSlots: OutputPorts Key={item.Key}, Port={item.Port}, Type={item.Type}, Selector={item.Selector}, ConnectionType={item.ConnectionType}, Parent={item.ParentDevice}");
+                this.LogInformation($"SetupSlots: OutputPorts {item.ToString()}");
             }
         }
 
         private void SetupInputSlot(uint slotNum)
         {
-            var key = $"input{slotNum}";
             var name = InputNames.ContainsKey(slotNum) ? InputNames[slotNum] : $"Input {slotNum}";
-            var slot = new InputSlot(key, name, (int)slotNum);
 
-            InputSlots.Add(key, slot);
+            // add input slot to support IMatrixRouting
+            var slotKey = $"in{slotNum}";
+            var slot = new InputSlot(slotKey, name, (int)slotNum);
+            InputSlots.Add(slotKey, slot);
 
+            // add input slot for essentials routing
+            var portKey = $"{videoInPrefix}{slotNum}";
             InputPorts.Add(
               new RoutingInputPort(
-                key,
-                eRoutingSignalType.AudioVideo,
+                portKey,
+                eRoutingSignalType.Video | eRoutingSignalType.Audio | eRoutingSignalType.AudioVideo | eRoutingSignalType.SecondaryAudio,
                 eRoutingPortConnectionType.Hdmi,
                 slotNum,
                 this,
                 true)
               {
-                  FeedbackMatchObject = key,
+                  FeedbackMatchObject = slotNum,
               });
 
             InputNameFeedbacks[slotNum] = new StringFeedback($"inputNameFeedback-{slot.Key}", () => slot.Name);
@@ -271,17 +276,31 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         {
             if (slotNum == 0) return;
 
-            var key = $"output{slotNum}";
             var name = OutputNames.ContainsKey(slotNum) ? OutputNames[slotNum] : $"Output {slotNum}";
-            var slot = new OutputSlot(key, name, (int)slotNum);
 
-            OutputSlots.Add(key, slot);
+            // add output slot to support IMatrixRouting
+            var slotKey = $"out{slotNum}";
+            var slot = new OutputSlot(slotKey, name, (int)slotNum);
+            OutputSlots.Add(slotKey, slot);
 
+            // add video output slot for essentials routing
+            var videoKey = $"{videoOutPrefix}{slotNum}";
             OutputPorts.Add(
               new RoutingOutputPort(
-                key,
-                eRoutingSignalType.AudioVideo,
+                videoKey,
+                eRoutingSignalType.Video | eRoutingSignalType.Audio | eRoutingSignalType.AudioVideo,
                 eRoutingPortConnectionType.Hdmi,
+                slotNum,
+                this,
+                true));
+
+            // add audio output slot for essentials routing
+            var audioKey = $"{audioOutPrefix}{slotNum}";
+            OutputPorts.Add(
+              new RoutingOutputPort(
+                audioKey,
+                eRoutingSignalType.SecondaryAudio,
+                eRoutingPortConnectionType.LineAudio,
                 slotNum,
                 this,
                 true));
@@ -290,11 +309,11 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             OutputVideoNameFeedbacks[slotNum] = new StringFeedback($"outputVideoNameFeedback-{slot.Key}", () => slot.Name);
             OutputAudioNameFeedbacks[slotNum] = new StringFeedback($"outputAudioNameFeedback-{slot.Key}", () => slot.Name);
 
-            VideoOutputFeedbacks[slotNum] = new IntFeedback($"videoOutputFeedback-{slot.Key}", () => slot.CurrentRoutes[eRoutingSignalType.Video] is InputSlot inputSlot ? inputSlot.SlotNumber : 0);
-            AudioOutputFeedbacks[slotNum] = new IntFeedback($"audioOutputFeedback-{slot.Key}", () => slot.CurrentRoutes[eRoutingSignalType.Audio] is InputSlot inputSlot ? inputSlot.SlotNumber : 0);
+            VideoOutputFeedbacks[slotNum] = new IntFeedback($"videoOutputFeedback-{slot.Key}", () => slot.CurrentRoutes[eRoutingSignalType.AudioVideo] is InputSlot inputSlot ? inputSlot.SlotNumber : 0);
+            AudioOutputFeedbacks[slotNum] = new IntFeedback($"audioOutputFeedback-{slot.Key}", () => slot.CurrentRoutes[eRoutingSignalType.SecondaryAudio] is InputSlot inputSlot ? inputSlot.SlotNumber : 0);
 
-            OutputVideoRouteNameFeedbacks[slotNum] = new StringFeedback($"outputVideoRouteNameFeedback-{slot.Key}", () => slot.CurrentRoutes[eRoutingSignalType.Video]?.Name ?? config.NoRouteText);
-            OutputAudioRouteNameFeedbacks[slotNum] = new StringFeedback($"outputAudioRouteNameFeedback-{slot.Key}", () => slot.CurrentRoutes[eRoutingSignalType.Audio]?.Name ?? config.NoRouteText);
+            OutputVideoRouteNameFeedbacks[slotNum] = new StringFeedback($"outputVideoRouteNameFeedback-{slot.Key}", () => slot.CurrentRoutes[eRoutingSignalType.AudioVideo]?.Name ?? config.NoRouteText);
+            OutputAudioRouteNameFeedbacks[slotNum] = new StringFeedback($"outputAudioRouteNameFeedback-{slot.Key}", () => slot.CurrentRoutes[eRoutingSignalType.SecondaryAudio]?.Name ?? config.NoRouteText);
         }
 
         private void Socket_ConnectionChange(object sender, GenericSocketStatusChageEventArgs args)
@@ -325,12 +344,14 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         {
             if (message.Contains("VS IN"))
             {
+                this.LogDebug("ProcessFeedbackMessage: '{0}'", message.Replace("\r", "[CR]").Replace("\n", "[LF]"));
                 ProcessVideoRouteFeedback(message);
                 return;
             }
 
             if (message.Contains("AS IN"))
             {
+                this.LogDebug("ProcessFeedbackMessage: '{0}'", message.Replace("\r", "[CR]").Replace("\n", "[LF]"));
                 ProcessAudioRouteFeedback(message);
                 return;
             }
@@ -348,7 +369,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             }
 
             // Log unhandled messages for debugging
-            this.LogDebug("ProcessFeedbackMessage: Unhandled message '{0}'", message);
+            // this.LogDebug("ProcessFeedbackMessage: Unhandled message '{0}'", message.Replace("\r", "[CR]").Replace("\n", "[LF]"));
         }
 
         private void ProcessVideoRouteFeedback(string message)
@@ -363,18 +384,18 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 var outputNumber = uint.Parse(switchMatch.Groups[1].Value);
                 var inputNumber = uint.Parse(switchMatch.Groups[2].Value);
 
-                this.LogDebug($"ProcessVideoRouteFeedback: Switch response Input-{inputNumber} to Output-{outputNumber}");
+                //this.LogVerbose($"ProcessVideoRouteFeedback: Switch response Input-{inputNumber} to Output-{outputNumber}");
 
                 var outputSlot = OutputSlots.FirstOrDefault(x => x.Value.SlotNumber == outputNumber).Value;
                 var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value;
 
                 if (outputSlot != null && inputSlot != null)
                 {
-                    this.LogDebug($"ProcessVideoRouteFeedback: route feedback {inputSlot.SlotNumber}-{inputSlot.Name} to {outputSlot.SlotNumber}-{outputSlot.Name}");
+                    this.LogVerbose($"ProcessVideoRouteFeedback: route feedback {inputSlot.SlotNumber}-{inputSlot.Name} to {outputSlot.SlotNumber}-{outputSlot.Name}");
 
-                    (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.Video, inputSlot);
+                    (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.AudioVideo, inputSlot);
 
-                    UpdateCurrentRoutes(inputNumber, outputNumber);
+                    UpdateCurrentRoutes(inputNumber, outputNumber, eRoutingSignalType.AudioVideo);
 
                 }
                 else if (outputSlot == null)
@@ -402,18 +423,18 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 var outputNumber = uint.Parse(switchMatch.Groups[1].Value);
                 var inputNumber = uint.Parse(switchMatch.Groups[2].Value);
 
-                this.LogDebug($"ProcessAudioRouteFeedback: Switch response Input-{inputNumber} to Output-{outputNumber}");
+                //this.LogVerbose($"ProcessAudioRouteFeedback: Switch response Input-{inputNumber} to Output-{outputNumber}");
 
                 var outputSlot = OutputSlots.FirstOrDefault(x => x.Value.SlotNumber == outputNumber).Value;
                 var inputSlot = InputSlots.FirstOrDefault(x => x.Value.SlotNumber == inputNumber).Value;
 
                 if (outputSlot != null && inputSlot != null)
                 {
-                    this.LogDebug($"ProcessAudioRouteFeedback: route feedback {inputSlot.SlotNumber}-{inputSlot.Name} to {outputSlot.SlotNumber}-{outputSlot.Name}");
+                    this.LogVerbose($"ProcessAudioRouteFeedback: route feedback {inputSlot.SlotNumber}: {inputSlot.Name} to {outputSlot.SlotNumber}: {outputSlot.Name}");
 
-                    (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.Audio, inputSlot);
+                    (outputSlot as OutputSlot)?.SetInputRoute(eRoutingSignalType.SecondaryAudio, inputSlot);
 
-                    UpdateCurrentRoutes(inputNumber, outputNumber);
+                    UpdateCurrentRoutes(inputNumber, outputNumber, eRoutingSignalType.SecondaryAudio);
 
                 }
                 else if (outputSlot == null)
@@ -442,7 +463,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 var slotNumber = uint.Parse(signalMatch.Groups[2].Value);
                 var status = int.Parse(signalMatch.Groups[3].Value);
 
-                this.LogDebug($"ProcessSignalStatusFeedback: Signal status {direction}-{slotNumber} is {status}");
+                //this.LogVerbose($"ProcessSignalStatusFeedback: Signal status {direction}-{slotNumber} is {status}");
 
                 // Update the signal status for the corresponding slot
                 if (direction.Equals("IN", StringComparison.OrdinalIgnoreCase))
@@ -511,10 +532,6 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
             await Task.Delay(500);
 
-            SendText("GET HIP");
-
-            await Task.Delay(500);
-
             PollSignalStatus();
         }
 
@@ -530,8 +547,6 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
 
             // get audio routes
             SendText("GET OUT0 AS IN");
-
-            await Task.Delay(500);
         }
 
         public async void PollSignalStatus()
@@ -698,7 +713,7 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         }
 
         /// <summary>
-        /// Routes an inputNum to an outputNum for the specified signal type(s)
+        /// Tech Matrix Routing using IMatrixRouting supports routing an input to an output using the specified signal type(s)
         /// </summary>
         /// <param name="inputSlotKey"></param>
         /// <param name="outputSlotKey"></param>
@@ -710,33 +725,41 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
             try
             {
                 var inputSlot = InputSlots.TryGetValue(inputSlotKey, out var inSlot) ? inSlot as InputSlot : null;
-                var outputSlot = OutputSlots.TryGetValue(outputSlotKey, out var outSlot) ? outSlot as OutputSlot : null;
-
                 if (inputSlot == null)
                 {
                     this.LogError($"Route: failed to find inputSlotKey `{inputSlotKey}`");
                     return;
                 }
 
+                var outputSlot = OutputSlots.TryGetValue(outputSlotKey, out var outSlot) ? outSlot as OutputSlot : null;
                 if (outputSlot == null)
                 {
                     this.LogError($"Route: failed to find outputSlotKey `{outputSlotKey}`");
                     return;
                 }
 
+                // route a/v (hdmi with embedded audio)
                 if (type.HasFlag(eRoutingSignalType.AudioVideo))
                 {
                     SetVideoRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
                     SetAudioRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
                     return;
                 }
-
+                // route video (hdmi video only)
                 if (type.HasFlag(eRoutingSignalType.Video))
                 {
                     SetVideoRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
                 }
-
+                // route secondary audio (extracted audio)
+                // - hdmi carries embedded audio, it cannot be routed separately
+                // - we must route secondaryAudio to getting breakaway audio routing from the extracted audio output
+                // - this does not apply to ExecuteSwitch (Essentials Magic Routing) since it handles the logic differently
                 if (type.HasFlag(eRoutingSignalType.Audio))
+                {
+                    SetAudioRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
+                }
+                // route secondary audio (extracted audio)
+                if (type.HasFlag(eRoutingSignalType.SecondaryAudio))
                 {
                     SetAudioRoute(inputSlot.SlotNumber, outputSlot.SlotNumber);
                 }
@@ -764,34 +787,38 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
                 var inputNum = Convert.ToUInt16(inputSelector);
                 var outputNum = Convert.ToUInt16(outputSelector);
 
-                // route a/v
+                // route a/v (hdmi with embedded audio)
                 if (signalType.HasFlag(eRoutingSignalType.AudioVideo))
                 {
                     SetVideoRoute(inputNum, outputNum);
-                    SetAudioRoute(inputNum, outputNum);
-                    UpdateCurrentRoutes(inputNum, outputNum);
+                    UpdateCurrentRoutes(inputNum, outputNum, signalType);
                     return;
                 }
-                // route video
+                // route video (hdmi video only)
                 if (signalType.HasFlag(eRoutingSignalType.Video))
                 {
                     SetVideoRoute(inputNum, outputNum);
-                    UpdateCurrentRoutes(inputNum, outputNum);
+                    UpdateCurrentRoutes(inputNum, outputNum, signalType);
                 }
-                // route audio
+                // route audio (hdmi embedded audio)
                 if (signalType.HasFlag(eRoutingSignalType.Audio))
                 {
+                    SetVideoRoute(inputNum, outputNum);
+                    UpdateCurrentRoutes(inputNum, outputNum, signalType);
+                }
+                // route secondary audio (extracted audio)
+                if (signalType.HasFlag(eRoutingSignalType.SecondaryAudio))
+                {
                     SetAudioRoute(inputNum, outputNum);
-                    UpdateCurrentRoutes(inputNum, outputNum);
+                    UpdateCurrentRoutes(inputNum, outputNum, signalType);
                 }
             }
             catch (Exception ex)
             {
-                this.LogError("ExecuteSwitch: {inputNum} to {outputNum} exception {message}", inputSelector, outputSelector, ex.Message);
+                this.LogError("ExecuteSwitch: in: {inputNum} to out: {outputNum} exception {message}", inputSelector, outputSelector, ex.Message);
                 this.LogDebug(ex, "ExecuteSwitch: Exception StackTrace");
                 return;
             }
-
         }
 
         /// <summary>
@@ -799,33 +826,37 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         /// </summary>
         /// <param name="inputSelector"></param>
         /// <param name="outputSelector"></param>
-        private void UpdateCurrentRoutes(uint inputSelector, uint outputSelector)
+        private void UpdateCurrentRoutes(uint inputSelector, uint outputSelector, eRoutingSignalType signalType)
         {
             RouteSwitchDescriptor descriptor;
 
-            descriptor = GetRouteDescriptorByOutputPort(outputSelector);
-            this.LogDebug("UpdateCurrentRoutes: Found existing descriptor: {0}", descriptor != null ? "Yes" : "No");
-
             var inputPort = GetRoutingInputPortForSelector(inputSelector);
-
-            var outputPort = GetRoutingOutputPortForSelector(outputSelector);
-
-            this.LogDebug("UpdateCurrentRoutes: Updating route for inputNum {inputNum} to outputNum {outputNum}", this, outputSelector, inputSelector);
-
-            if (outputPort is null)
+            if (inputPort is null)
             {
-                this.LogDebug("UpdateCurrentRoutes: Unable to find port for {outputNum}", this, outputSelector);
+                this.LogDebug("UpdateCurrentRoutes: Unable to find port for in: {inputNum}", inputSelector);
                 return;
             }
 
-            if (descriptor is null && outputPort is not null)
+            var outputPort = GetRoutingOutputPortForSelector(outputSelector, signalType);
+            if (outputPort is null)
             {
-                descriptor = new(outputPort, inputPort);
+                this.LogDebug("UpdateCurrentRoutes: Unable to find port for out: {outputNum}", outputSelector);
+                return;
+            }
+
+            this.LogDebug("UpdateCurrentRoutes: Updating route in: {inputPortKey} to out: {outputPortKey}", inputPort.Key, outputPort.Key);
+
+            descriptor = GetRouteDescriptorByOutputPort(outputSelector, signalType);
+            if (descriptor is null)
+            {
+                this.LogDebug($"UpdateCurrentRoutes: Descriptor not found for out: {outputPort.Key}, creating new descriptor");
+                descriptor = new RouteSwitchDescriptor(outputPort, inputPort);
 
                 CurrentRoutes.Add(descriptor);
             }
             else
             {
+                this.LogDebug($"UpdateCurrentRoutes: Descriptor found for out: {outputPort.Key}, updating input {inputPort.Key}");
                 descriptor.InputPort = inputPort;
             }
 
@@ -837,64 +868,72 @@ namespace PepperDash.Essentials.Plugin.AVProEdge
         /// </summary>
         /// <param name="selector"></param>
         /// <returns></returns>
-        private RouteSwitchDescriptor GetRouteDescriptorByOutputPort(uint selector)
+        private RouteSwitchDescriptor GetRouteDescriptorByOutputPort(uint selector, eRoutingSignalType signalType)
         {
-            this.LogDebug("GetRouteDescriptorByOutputPort: Looking for route descriptor with outputNum port selector {0}", selector);
+            var outputPort = GetRoutingOutputPortForSelector(selector, signalType);
+
+            this.LogDebug($"GetRouteDescriptorByOutputPort: Looking for route descriptor containing output {selector} with key '{outputPort?.Key}' with type '{outputPort?.Type}'");
             return CurrentRoutes.FirstOrDefault(rd =>
             {
-                this.LogDebug("GetRouteDescriptorByOutputPort: Checking descriptor with outputNum port selector {0}", rd.OutputPort.Selector);
                 if (rd.OutputPort.Selector is not uint opSelector)
                 {
-                    this.LogDebug("GetRouteDescriptorByOutputPort: Output port selector is not a uint");
                     return false;
                 }
 
-                this.LogDebug("GetRouteDescriptorByOutputPort: Comparing {0} to {1}", opSelector, selector);
+                if (rd.OutputPort.Type.HasFlag(signalType) == false)
+                {
+                    this.LogDebug($"GetRouteDescriptorByOutputPort: Output {rd.OutputPort.Key} type '{rd.OutputPort.Type}' does not match requested signal type '{signalType}'");
+                    return false;
+                }
+
                 return opSelector == selector;
             });
         }
 
-        /// <summary>
-        /// Gets the routing inputNum port for the specified inputNum number.
-        /// </summary>
-        /// <param name="selector"></param>
-        /// <returns></returns>
+        // Gets the routing inputNum port for the specified inputNum number.
         private RoutingInputPort GetRoutingInputPortForSelector(uint selector)
         {
-            this.LogDebug("GetRoutingInputPortForSelector: Looking for inputNum port with selector {0}", selector);
+            var selectorKey = $"hdmi-in{selector}";
 
+            this.LogDebug("GetRoutingInputPortForSelector: Looking for input port with key {0}", selectorKey);
             return InputPorts.FirstOrDefault(ip =>
             {
-                this.LogDebug("GetRoutingInputPortForSelector: Checking inputNum port with selector {0}", ip.Selector);
-                if (ip.Selector is not uint ipSelector)
+                if (ip.Key is not string ipKey)
                 {
-                    this.LogDebug("GetRoutingInputPortForSelector: Input port selector is not a uint");
+                    this.LogDebug("GetRoutingInputPortForSelector: Input port key is not a string");
                     return false;
                 }
 
-                this.LogDebug("GetRoutingInputPortForSelector: Comparing {0} to {1}", ipSelector, selector);
-                return ipSelector == selector;
+                this.LogDebug("GetRoutingInputPortForSelector: Comparing {0} to {1}", ipKey, selectorKey);
+                return ipKey == selectorKey;
             });
         }
 
-
-        /// <summary>
-        /// Gets the routing outputNum port for the specified outputNum number.
-        /// </summary>
-        /// <param name="selector"></param>
-        /// <returns></returns>
-        private RoutingOutputPort GetRoutingOutputPortForSelector(uint selector)
+        // Gets the routing outputNum port for the specified outputNum number.
+        private RoutingOutputPort GetRoutingOutputPortForSelector(uint selector, eRoutingSignalType signalType)
         {
-
-            return OutputPorts.FirstOrDefault(op =>
+            var selectorKey = signalType switch
             {
-                if (op.Selector is not uint opSelector)
-                {
-                    return false;
-                }
+                eRoutingSignalType.Video => $"{videoOutPrefix}{selector}",
+                eRoutingSignalType.AudioVideo => $"{videoOutPrefix}{selector}",
+                eRoutingSignalType.Audio => $"{videoOutPrefix}{selector}",
+                eRoutingSignalType.SecondaryAudio => $"{audioOutPrefix}{selector}",
+                _ => null
+            };
 
-                return opSelector == selector;
-            });
+            if (selectorKey == null)
+            {
+                this.LogDebug("GetRoutingOutputPortForSelector: Unsupported signal type {0}", signalType);
+                return null;
+            }
+
+            var op = OutputPorts[selectorKey];
+            if (op != null && op.Type.HasFlag(signalType))
+            {
+                return op;
+            }
+
+            return null;
         }
 
         private void SetVideoRoute(int input, int output)

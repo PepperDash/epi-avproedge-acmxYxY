@@ -15,14 +15,15 @@ namespace PepperDash.Essentials.Plugin.IOs
     {
       { eRoutingSignalType.AudioVideo, default },
       { eRoutingSignalType.Audio, default },
-      { eRoutingSignalType.Video, default }
+      { eRoutingSignalType.Video, default },
+      { eRoutingSignalType.SecondaryAudio, default }
     };
 
     public Dictionary<eRoutingSignalType, IRoutingInputSlot> CurrentRoutes => currentRoutes;
 
     public int SlotNumber { get; private set; }
 
-    public eRoutingSignalType SupportedSignalTypes { get; private set; }
+    public eRoutingSignalType SupportedSignalTypes => eRoutingSignalType.Video | eRoutingSignalType.Audio | eRoutingSignalType.AudioVideo | eRoutingSignalType.SecondaryAudio;
 
     public string Name { get; private set; }
 
