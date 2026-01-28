@@ -99,3 +99,81 @@ Default Baud: `57600`
     }
 }
 ```
+<!-- START Minimum Essentials Framework Versions -->
+### Minimum Essentials Framework Versions
+
+- 2.12.4
+<!-- END Minimum Essentials Framework Versions -->
+<!-- START Config Example -->
+### Config Example
+
+```json
+{
+    "key": "GeneratedKey",
+    "uid": 1,
+    "name": "GeneratedName",
+    "type": "acmx16x16",
+    "group": "Group",
+    "properties": {
+        "control": "SampleValue",
+        "PollTimeMs": 0,
+        "inputNames": {
+            "SampleValue": "SampleString"
+        },
+        "outputNames": {
+            "SampleValue": "SampleString"
+        },
+        "noRouteText": "SampleString"
+    }
+}
+```
+<!-- END Config Example -->
+<!-- START Supported Types -->
+### Supported Types
+
+- acmx16x16
+- acmx8x8
+<!-- END Supported Types -->
+<!-- START Join Maps -->
+
+<!-- END Join Maps -->
+<!-- START Interfaces Implemented -->
+### Interfaces Implemented
+
+- IMatrixRouting
+- IRoutingWithFeedback
+- ICommunicationMonitor
+- IDeviceInfoProvider
+- IRoutingOutputSlot
+- IRoutingInputSlot
+<!-- END Interfaces Implemented -->
+<!-- START Base Classes -->
+### Base Classes
+
+- DmChassisControllerJoinMap
+- EssentialsBridgeableDevice
+<!-- END Base Classes -->
+<!-- START Public Methods -->
+### Public Methods
+
+- public void SendText(string text)
+- public void Route(string inputSlotKey, string outputSlotKey, eRoutingSignalType type)
+- public void ExecuteSwitch(object inputSelector, object outputSelector, eRoutingSignalType signalType)
+- public void UpdateDeviceInfo()
+- public void SetInputRoute(eRoutingSignalType type, IRoutingInputSlot input)
+<!-- END Public Methods -->
+<!-- START Bool Feedbacks -->
+### Bool Feedbacks
+
+- ConnectFeedback
+- OnlineFeedback
+- IsOnline
+<!-- END Bool Feedbacks -->
+<!-- START Int Feedbacks -->
+### Int Feedbacks
+
+- StatusFeedback
+<!-- END Int Feedbacks -->
+<!-- START String Feedbacks -->
+
+<!-- END String Feedbacks -->
